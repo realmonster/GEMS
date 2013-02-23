@@ -10,7 +10,7 @@ char *fm_format[] =
 {
 	"??????tt",
 	"????ovvv",
-	"?m??????",
+	"mm??????",
 	"??fffaaa",
 	"lraa?fff",
 	
@@ -228,8 +228,8 @@ int main(int argc, char **args)
 				printf("AMS: %X\n", (int)fm.AMS);
 				printf("FB: %X\n", (int)fm.FB);
 				printf("ALG: %X\n", (int)fm.ALG);
-				printf("LR: %c%c\n", (int)fm.L,(int)fm.R);
-				printf("CH3_on: %X\n", (int)fm.CH3_on);
+				printf("LR: %d%d\n", (int)fm.L,(int)fm.R);
+				printf("CH3: %X\n", (int)fm.CH3);
 				printf("LFO_on: %X\n", (int)fm.LFO_on);
 				printf("LFO_val: %X\n", (int)fm.LFO_val);
 				printf("KEY: ");
@@ -240,7 +240,10 @@ int main(int argc, char **args)
 				{
 					printf("Operator %d:\n", i+1);
 					printf("TL: %X\n", (int)fm.OP[i].TL);
-					printf("DT: %X\n", (int)fm.OP[i].DT);
+					printf("DT: %X=%d\n", (int)fm.OP[i].DT,
+						fm.OP[i].DT&4
+						? -((fm.OP[i].DT)&3)
+						: fm.OP[i].DT);
 					printf("MT: %X\n", (int)fm.OP[i].MT);
 					printf("RS: %X\n", (int)fm.OP[i].RS);
 					printf("AR: %X\n", (int)fm.OP[i].AR);
@@ -251,6 +254,8 @@ int main(int argc, char **args)
 					printf("RR: %X\n", (int)fm.OP[i].RR);
 					printf("\n");
 				}
+				for (int i=0; i<4; ++i)
+					printf("Channel 3 Operator %d Frequency: %X\n", i+1,(int)fm.CH3_F[i]);
 			}
 			else if (it == GEMSI_DAC)
 			{

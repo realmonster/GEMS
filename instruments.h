@@ -53,12 +53,11 @@ struct GemsFM : GemsInstrument
 	BYTE LFO_val; // : 3; // Low Frequency Oscilator value
 
 	// Offset 2:
-	BYTE unk2   ; // : 1;
-	BYTE CH3_on ; // : 1; // Channel 3 mode on
-	BYTE unk3   ; // : 6;
+	BYTE CH3    ; // : 1; // Channel 3 mode
+	BYTE unk2   ; // : 6;
 
 	// Offset 3:
-	BYTE unk4   ; // : 2;
+	BYTE unk3   ; // : 2;
 	BYTE FB     ; // : 3; // Feedback
 	BYTE ALG    ; // : 3; // Algorithm
 
@@ -66,16 +65,16 @@ struct GemsFM : GemsInstrument
 	BYTE L      ; // : 1; // Left channel on
 	BYTE R      ; // : 1; // Right channel on
 	BYTE AMS    ; // : 2; // AMS
-	BYTE unk5   ; // : 1;
+	BYTE unk4   ; // : 1;
 	BYTE FMS    ; // : 3; // FMS
 
 	// Offset 5;
 	GemsFMOperator OP[4];
-	short unk6[4];
-	BYTE unk7   ; // : 4;
+	short CH3_F[4]; //  Channel 3 Frequency
+	BYTE unk6   ; // : 4;
 	BYTE KEY    ; // : 4; // Operator On[4]
-	BYTE unk8   ; // : 8;
-	BYTE unk9[0];
+	BYTE unk7   ; // : 8;
+	BYTE unk8[0];
 
 	void Set(BYTE *data);
 	

@@ -24,12 +24,11 @@ void GemsFM::Set(BYTE *data)
 	LFO_val = data[1]&7;
 
 	// Offset 2
-	unk2 = data[2]>>7;
-	CH3_on = (data[2]>>6)&1;
-	unk3 = data[2]&0x3F;
+	CH3 = data[2]>>6;
+	unk2 = data[2]&0x3F;
 
 	// Offset 3
-	unk4 = data[3]>>6;
+	unk3 = data[3]>>6;
 	FB = (data[3]>>3)&7;
 	ALG = data[3]&7;
 
@@ -37,23 +36,22 @@ void GemsFM::Set(BYTE *data)
 	L = data[4]>>7;
 	R = (data[4]>>6)&1;
 	AMS = (data[4]>>4)&3;
-	unk5 = (data[4]>>3)&1;
+	unk4 = (data[4]>>3)&1;
 	FMS = data[4]&7;
 
 	for (int i = 0; i < 4; ++i)
-		OP[i].Set(data + 5 + i*6);
+		OP[i].Set(data + 5 + ((i<<1|i>>1)&3)*6);
 
 	for (int i = 0; i < 4; ++i)
-		unk6[i] = GetWordBE(data + 29 + i*2);
+		CH3_F[i] = GetWordBE(data + 29 + i*2);
 	
-	unk7 = data[37]>>4;
+	unk6 = data[37]>>4;
 	KEY = data[37]&0xF;
-	unk8 = data[38];
+	unk7 = data[38];
 }
 
 bool GemsFM::IsOn(int op)
 {
-	op = ((op<<1)|(op>>1))&3; // swap bits
 	return KEY&(1<<op);
 }
 
