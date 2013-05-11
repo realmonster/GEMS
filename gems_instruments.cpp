@@ -107,6 +107,8 @@ void usage()
 "       mode: 0 - bits\n"
 "             1 - mask\n"
 "             2 - values\n"
+"             3 - opm\n"
+"             4 - tyi\n"
 "\n"
 "       triple - use any third argument,\n"
 "                to use 3 bytes pointers.\n"
@@ -160,10 +162,13 @@ int main(int argc, char **args)
 		// instrument type
 		int it = inst_type(inst[z]);
 
-		if (it < 4)
-			printf("Patch %02X (%s):",inst[z],inst_type_name[it]);
-		else
-			printf("Patch %02X (%02X):",inst[z],it);
+		if (mode != 3)
+		{
+			if (it < 4)
+				printf("Patch %02X (%s):",inst[z],inst_type_name[it]);
+			else
+				printf("Patch %02X (%02X):",inst[z],it);
+		}
 
 		// assume that offset of next instrument = end of previous
 		int off_e = inst_offs(inst[z]+1);
@@ -266,6 +271,60 @@ int main(int argc, char **args)
 				for (int i = 1; i < off_e - off; ++i)
 					printf(" %02X", (int)ym[i]);
 			}
+		}
+		if (mode == 3)
+		{
+			printf("LFO: 0 0 0 0 0\n");
+			printf("@:%d ",z);
+			if (it < 4)
+				printf("Patch %02X (%s)\n",inst[z],inst_type_name[it]);
+			else
+				printf("Patch %02X (%02X)\n",inst[z],it);
+			GemsFM fm;
+			fm.Set(ym);
+			printf("CH: 64 %d %d %d %d 120 0\n",fm.FB,fm.ALG,fm.AMS,fm.FMS);
+			char * opname[]={"M1","C1","M2","C2"};
+			for (int i=0; i<4; ++i)
+			{
+				printf("%s: %d %d %d %d %d %d %d %d %d %d %d\n",
+				opname[i],fm.OP[i].AR,fm.OP[i].DR,fm.OP[i].SDR,fm.OP[i].RR,fm.OP[i].SL,fm.IsOn(i)?fm.OP[i].TL:127,fm.OP[i].RS,fm.OP[i].MT,fm.OP[i].DT,0,fm.OP[i].AM?128:0);
+			}
+		}
+		if (mode == 4 && it == GEMSI_FM)
+		{
+			GemsFM fm;
+			fm.Set(ym);
+			unsigned char ymb[39];
+			fm.Write(ymb);
+			if (memcmp(ym,ymb,39) != 0)
+			{
+				printf("error %02X\n",inst[z]);
+				throw 42;
+			}
+			unsigned char tyi[32];
+			for (int i=0; i<4; ++i)
+			{
+				unsigned char *op = ym + 5 + i*6;
+				tyi[ 0+i] = op[0]; // DT/MUL
+				tyi[ 4+i] = op[1]; // TL
+				if (!fm.IsOn((i<<1|i>>1)&3))
+					tyi[ 4+i] |= 0x7F; // TL
+				tyi[ 8+i] = op[2]; // RS/AR
+				tyi[12+i] = op[3]; // AM/DR
+				tyi[16+i] = op[4]; // SR
+				tyi[20+i] = op[5]; // SL/RR
+				tyi[24+i] = 0 ; // SSG-EG
+			}
+			tyi[28] = ym[3]; // FB/ALG
+			tyi[29] = ym[4]; // FMS/AMS
+			tyi[30] = 'Y';
+			tyi[31] = 'I';
+
+			char tyi_name[20];
+			sprintf(tyi_name,"%02X.tyi",inst[z]);
+			FILE *tyi_f = fopen(tyi_name,"wb");
+			fwrite(tyi,1,32,tyi_f);
+			fclose(tyi_f);
 		}
 		printf("\n");
 		fflush(stdout);

@@ -4,12 +4,15 @@
 typedef unsigned char BYTE;
 
 // Get Word Little-Endian 01 23 = 0x2301
-int GetWordLE(BYTE *data);
+int GetWordLE(const BYTE *data);
+void SetWordLE(BYTE *data, int value);
 
 // Get Word Big-Endian 01 23 = 0x0123
-int GetWordBE(BYTE *data);
+int GetWordBE(const BYTE *data);
+void SetWordBE(BYTE *data, int value);
 
 // Get 3 bytes Little-Endian 01 23 45 = 0x452301
-int GetTriple(BYTE *data);
+int GetTriple(const BYTE *data);
+void SetTriple(BYTE *data, int value);
 
 #endif

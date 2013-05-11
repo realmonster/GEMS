@@ -42,7 +42,8 @@ struct GemsFMOperator
 	BYTE SL  ;  // : 4; // Sustain Level
 	BYTE RR  ;  // : 4; // Release Rate
 
-	void Set(BYTE *data);
+	void Set(const BYTE *data);
+	void Write(BYTE *data);
 };
 
 struct GemsFM : GemsInstrument
@@ -76,7 +77,8 @@ struct GemsFM : GemsInstrument
 	BYTE unk7   ; // : 8;
 	BYTE unk8[0];
 
-	void Set(BYTE *data);
+	void Set(const BYTE *data);
+	void Write(BYTE *data);
 	
 	// returns KEY on
 	bool IsOn(int op);
