@@ -77,7 +77,7 @@ void GemsFM::Write(BYTE *data)
 	         |(FMS&7);
 
 	for (int i = 0; i < 4; ++i)
-		OP[i].Write(data + 5 + ((i<<1|i>>1)&3)*6);
+		OP[i].Write(data + 5 + (((i<<1)|(i>>1))&3)*6);
 
 	for (int i = 0; i < 4; ++i)
 		SetWordBE(data + 29 + i*2, CH3_F[i]);
@@ -102,7 +102,7 @@ void GemsFMOperator::Set(const BYTE *data)
 	// Offset 0
 	unk1 = data[0]>>7;
 	DT = (data[0]>>4)&7;
-	MT = data[0]&0xF;
+	MUL= data[0]&0xF;
 
 	// Offset 1
 	unk2 = data[1]>>7;
@@ -132,7 +132,7 @@ void GemsFMOperator::Write(BYTE *data)
 	// Offset 0
 	data[0] = (unk1<<7)
 	         |((DT&7)<<4)
-	         |(MT&0xF);
+	         |(MUL&0xF);
 
 	// Offset 1
 	data[1] = (unk2<<7)

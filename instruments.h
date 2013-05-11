@@ -18,7 +18,7 @@ struct GemsFMOperator
 	// Offset 0
 	BYTE unk1;  // : 1;
 	BYTE DT  ;  // : 3; // Detune
-	BYTE MT  ;  // : 4; // Multiply
+	BYTE MUL ;  // : 4; // Multiply
 
 	// Offset 1
 	BYTE unk2;  // : 1;

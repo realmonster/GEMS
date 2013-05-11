@@ -109,6 +109,11 @@ void usage()
 "             2 - values\n"
 "             3 - opm\n"
 "             4 - tyi\n"
+"             5 - tfi\n"
+"\n"
+"       Warning: \n"
+"          4, 5 mode writes 00.ext in current directory\n"
+"          and overwrites files if exists\n"
 "\n"
 "       triple - use any third argument,\n"
 "                to use 3 bytes pointers.\n"
@@ -249,12 +254,12 @@ int main(int argc, char **args)
 						fm.OP[i].DT&4
 						? -((fm.OP[i].DT)&3)
 						: fm.OP[i].DT);
-					printf("MT: %X\n", (int)fm.OP[i].MT);
+					printf("MUL: %X\n",(int)fm.OP[i].MUL);
 					printf("RS: %X\n", (int)fm.OP[i].RS);
 					printf("AR: %X\n", (int)fm.OP[i].AR);
 					printf("AM: %X\n", (int)fm.OP[i].AM);
 					printf("DR: %X\n", (int)fm.OP[i].DR);
-					printf("SDR: %X\n", (int)fm.OP[i].SDR);
+					printf("SDR: %X\n",(int)fm.OP[i].SDR);
 					printf("SL: %X\n", (int)fm.OP[i].SL);
 					printf("RR: %X\n", (int)fm.OP[i].RR);
 					printf("\n");
@@ -287,27 +292,20 @@ int main(int argc, char **args)
 			for (int i=0; i<4; ++i)
 			{
 				printf("%s: %d %d %d %d %d %d %d %d %d %d %d\n",
-				opname[i],fm.OP[i].AR,fm.OP[i].DR,fm.OP[i].SDR,fm.OP[i].RR,fm.OP[i].SL,fm.IsOn(i)?fm.OP[i].TL:127,fm.OP[i].RS,fm.OP[i].MT,fm.OP[i].DT,0,fm.OP[i].AM?128:0);
+				opname[i],fm.OP[i].AR,fm.OP[i].DR,fm.OP[i].SDR,fm.OP[i].RR,fm.OP[i].SL,fm.IsOn(i)?fm.OP[i].TL:127,fm.OP[i].RS,fm.OP[i].MUL,fm.OP[i].DT,0,fm.OP[i].AM?128:0);
 			}
 		}
 		if (mode == 4 && it == GEMSI_FM)
 		{
 			GemsFM fm;
 			fm.Set(ym);
-			unsigned char ymb[39];
-			fm.Write(ymb);
-			if (memcmp(ym,ymb,39) != 0)
-			{
-				printf("error %02X\n",inst[z]);
-				throw 42;
-			}
 			unsigned char tyi[32];
 			for (int i=0; i<4; ++i)
 			{
 				unsigned char *op = ym + 5 + i*6;
 				tyi[ 0+i] = op[0]; // DT/MUL
 				tyi[ 4+i] = op[1]; // TL
-				if (!fm.IsOn((i<<1|i>>1)&3))
+				if (!fm.IsOn(((i<<1)|(i>>1))&3))
 					tyi[ 4+i] |= 0x7F; // TL
 				tyi[ 8+i] = op[2]; // RS/AR
 				tyi[12+i] = op[3]; // AM/DR
@@ -325,6 +323,37 @@ int main(int argc, char **args)
 			FILE *tyi_f = fopen(tyi_name,"wb");
 			fwrite(tyi,1,32,tyi_f);
 			fclose(tyi_f);
+		}
+		if (mode == 5 && it == GEMSI_FM)
+		{
+			GemsFM fm;
+			fm.Set(ym);
+			BYTE tfi[42];
+			tfi[0] = fm.ALG&7;
+			tfi[1] = fm.FB&7;
+			for (int i=0; i<4; ++i)
+			{
+				int j = ((i<<1)|(i>>1))&3;
+				BYTE *op = tfi+2+i*10;
+				op[0] = fm.OP[j].MUL;
+				op[1] = 3+(fm.OP[j].DT&3)*(fm.OP[j].DT&4?-1:1);
+				op[2] = fm.OP[j].TL;
+				if (!fm.IsOn(j))
+					op[2] = 0x7F; // TL
+				op[3] = fm.OP[j].RS;
+				op[4] = fm.OP[j].AR;
+				op[5] = fm.OP[j].DR;
+				op[6] = fm.OP[j].SDR;
+				op[7] = fm.OP[j].RR;
+				op[8] = fm.OP[j].SL;
+				op[9] = 0;
+			}
+
+			char tfi_name[20];
+			sprintf(tfi_name,"%02X.tfi",inst[z]);
+			FILE *tfi_f = fopen(tfi_name,"wb");
+			fwrite(tfi,1,42,tfi_f);
+			fclose(tfi_f);
 		}
 		printf("\n");
 		fflush(stdout);
