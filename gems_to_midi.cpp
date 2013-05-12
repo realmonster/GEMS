@@ -392,6 +392,17 @@ void track_pitch_sens(std::vector<unsigned char> &track, int channel, int semito
 	track.push_back(0x7F); // value
 }
 
+// add MIDI META end
+void track_end(std::vector<unsigned char> &track, int delta)
+{
+	std::vector<unsigned char> tmp = gett(delta);
+	for (int i=0; i<tmp.size(); ++i)
+		track.push_back(tmp[i]);
+	track.push_back(0xFF); // META
+	track.push_back(0x2F); // end
+	track.push_back(0);
+}
+
 char *inst_type_name[] = {"FM", "DAC", "PSG", "NOISE"};
 std::vector<int> inst;
 std::vector<int> inst_pan;
@@ -431,7 +442,7 @@ int pt;
 void process_note(note & n, FILE *txt, int midi_channel)
 {
 	lfprintf(txt,"time=%X channel=%X note=%X on=%X\n",n.t,n.c,n.x,n.on?1:0);
-	if (n.t < 0)
+	if (n.t < 0 || n.t >= maxtime)
 		return;
 
 	std::vector<unsigned char> tmp = gett(n.t - pt);
@@ -704,6 +715,12 @@ int main(int argc, char **args)
 			track_text_event(track,loop_start_time,6,"loop start");
 			track_text_event(track,maxtime-loop_start_time,6,"loop end");
 		}
+		else
+		{
+			lprintf("track_end:%d\n",maxtime);
+			track_text_event(track,maxtime,6,"end");
+		}
+		track_end(track,0);
 		
 		// Write MIDI track with loops and tempo.
 		strcpy((char*)buff,"MTrk");
@@ -727,6 +744,7 @@ int main(int argc, char **args)
 			{
 				if (track.size())
 				{
+					track_end(track,maxtime-pt);
 					strcpy((char*)buff,"MTrk");
 					buff[4] = track.size()>>24;
 					buff[5] = track.size()>>16;
@@ -750,6 +768,7 @@ int main(int argc, char **args)
 		}
 		if (track.size())
 		{
+			track_end(track,maxtime-pt);
 			strcpy((char*)buff,"MTrk");
 			buff[4] = track.size()>>24;
 			buff[5] = track.size()>>16;
