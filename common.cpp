@@ -39,3 +39,76 @@ void SetTriple(BYTE *data, int value)
 	data[1]	= value >> 8;
 	data[2]	= value >> 16;
 }
+
+// Scan number
+// input: spaces + number in format:
+// 0123 for decimal
+// $12 for hex
+// 0x12 for hex
+int ScanNum(const char *str, int &num)
+{
+	int l=0, r=0;
+	while (*str == ' '
+		|| *str == '\r'
+		|| *str == '\n'
+		|| *str == '\t')
+	{
+		++l,++str;
+	}
+	bool was = false;
+	bool neg = false;
+	if (*str == '-')
+	{
+		neg = true;
+		++l,++str;
+	}
+	else if (*str == '+')
+	{
+		++l,++str;
+	}
+	if (*str == '$' || (str[0] == '0' && str[1] == 'x'))
+	{
+		if (*str == '$')
+			++l,++str;
+		else
+			l+=2,str+=2;
+		for (;;)
+		{
+			if (*str >= '0' && *str <= '9')
+				r = (r<<4) | (*str - '0');
+			else if (*str >= 'a' && *str <= 'f')
+				r = (r<<4) | (*str - 'a' + 10);
+			else if (*str >= 'A' && *str <= 'F')
+				r = (r<<4) | (*str - 'A' + 10);
+			else
+			{
+				if (!was)
+					return 0;
+				if (neg)
+					r = -r;
+				num = r;
+				return l;
+			}
+			++l,++str;
+			was = true;
+		}
+	}
+	for (;;)
+	{
+		if (*str >= '0' && *str <= '9')
+			r = (r*10) + (*str - '0');
+		else
+		{
+			if (!was)
+				return 0;
+			if (neg)
+				r = -r;
+			num = r;
+			return l;
+		}
+		++l,++str;
+		was = true;
+	}
+	// unreachable
+	return 0;	
+}

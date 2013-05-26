@@ -15,4 +15,11 @@ void SetWordBE(BYTE *data, int value);
 int GetTriple(const BYTE *data);
 void SetTriple(BYTE *data, int value);
 
+// Scan number
+// input: spaces + number in format:
+// 0123 for decimal
+// $12 for hex
+// 0x12 for hex
+int ScanNum(const char *str, int &num);
+
 #endif
