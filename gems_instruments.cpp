@@ -60,12 +60,13 @@ char *dac_format[] =
 
 char *psg_format[] =
 {
-	"??????tt"
-};
-
-char *noise_format[] =
-{
-	"??????tt"
+	"??????tt",
+	"?????nnn",
+	"aaaaaaaa",
+	"????ssss",
+	"????llll",
+	"dddddddd",
+	"rrrrrrrr"
 };
 
 BYTE buff[1000];
@@ -196,13 +197,9 @@ int main(int argc, char **args)
 				break;
 
 			case GEMSI_PSG:
-				format = noise_format;
-				format_size = sizeof(noise_format)/sizeof(char*);
-				break;
-
 			case GEMSI_NOISE:
-				format = noise_format;
-				format_size = sizeof(noise_format)/sizeof(char*);
+				format = psg_format;
+				format_size = sizeof(psg_format)/sizeof(char*);
 				break;
 
 			default:
@@ -222,7 +219,7 @@ int main(int argc, char **args)
 					|| (zz >= format_size || format[zz][j]=='?'))
 					printf("%c",c&0x80?'1':'0');
 				else
-					printf("%c",fm_format[zz][j]);
+					printf("%c",format[zz][j]);
 			}
 		}
 		
@@ -270,6 +267,18 @@ int main(int argc, char **args)
 			else if (it == GEMSI_DAC)
 			{
 				printf(" %02X",(int)ym[1]);
+			}
+			else if (it == GEMSI_PSG || it == GEMSI_NOISE)
+			{
+				printf("\n");
+				GemsPSG psg;
+				psg.Set(ym);
+				printf("ND: %X\n", (int)psg.ND);
+				printf("AR: %X\n", (int)psg.AR);
+				printf("SL: %X\n", (int)psg.SL);
+				printf("AL: %X\n", (int)psg.AL);
+				printf("DR: %X\n", (int)psg.DR);
+				printf("RR: %X\n", (int)psg.RR);
 			}
 			else
 			{

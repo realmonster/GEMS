@@ -262,8 +262,8 @@ int main(int argc, char **args)
 			return 0;
 		}
 		// mark sequence offset bytes as "used"
-		sequences_used[i] = true;
-		sequences_used[i+1] = true;
+		sequences_used[i*2  ] = true;
+		sequences_used[i*2+1] = true;
 
 		// get channels count
 		int channels = sequences[seq_start];
@@ -277,6 +277,10 @@ int main(int argc, char **args)
 			printf("Error: sequence %03d header over end of file\n",i);
 			return 0;
 		}
+		
+		// mark header offsets as "used"
+		for (int j=0; j<header_len; ++j)
+			sequences_used[seq_start+j] = true;
 		
 		// labels for "assembly"
 		std::vector<int> labels; // where
@@ -411,12 +415,17 @@ int main(int argc, char **args)
 				}
 			}
 		}
+		// write section
+		fprintf(f_seq," SECTION HEADER\n");
 		// write count of channels 
 		fprintf(f_seq," dc.b %d\n",channels);
 		// write channels offsets
 		for (int c=0; c<channels; ++c)
 			fprintf(f_seq," dc.t channel_%d\n",c);
 
+		// write section
+		fprintf(f_seq,"\n SECTION CODE\n");
+		
 		// indexes of patches, modulations, samples required for current sequence
 		std::vector<int> patches_used;
 		std::vector<int> modulations_used;
@@ -616,9 +625,9 @@ int main(int argc, char **args)
 				continue;
 			}
 			// patch dump sizes
-			int psizes[]={0x26,1,6,6};
+			int psizes[]={0x27,2,7,7};
 			// check that full patch dump contains in file
-			if (poffs + 1 + psizes[ptype] > patches.size())
+			if (poffs + psizes[ptype] > patches.size())
 			{
 				printf("Error: patch $%02X info not full, "
 					"used in sequence %03d\n", pn, i);
@@ -638,16 +647,12 @@ int main(int argc, char **args)
 			switch(ptype)
 			{
 				case GEMSI_FM:
-					fprintf(ins,"importfm 'patch_%02X.raw'\n",pn);
+				case GEMSI_PSG:
+				case GEMSI_NOISE:
+					fprintf(ins,"importraw 'patch_%02X.raw'\n",pn);
 					break;
 				case GEMSI_DAC: // DAC has only one byte param, so keep it in plain text
 					fprintf(ins,"DAC %d\n",(int)patches[poffs+1]);
-					break;
-				case GEMSI_PSG:
-					fprintf(ins,"importpsg 'patch_%02X.raw'\n",pn);
-					break;
-				case GEMSI_NOISE:
-					fprintf(ins,"importnoise 'patch_%02X.raw'\n",pn);
 					break;
 			}
 			fclose(ins);
@@ -665,7 +670,7 @@ int main(int argc, char **args)
 					continue;
 				}
 				// write dump
-				int writed = fwrite(&patches[poffs+1],1,psizes[ptype],ins);
+				int writed = fwrite(&patches[poffs],1,psizes[ptype],ins);
 				// check that it was writen
 				if (writed != psizes[ptype])
 					printf("Error: can't write \"%s\" file\n",buff);
@@ -759,7 +764,7 @@ int main(int argc, char **args)
 				continue;
 			}
 			
-			// creade file for sample cfg
+			// create file for sample cfg
 			sprintf(buff,"%s%03d\\sample_%02X.sfx",dir,i,sn);
 			FILE *s = fopen(buff,"w");
 			if (!s)
@@ -819,16 +824,31 @@ int main(int argc, char **args)
 		// end of cfg
 		fclose(f_seq);
 	}
+	// create main cfg
 	FILE *cfg = fopen(args[5],"w");
 	if (!cfg)
 	{
 		printf("Can't create \"%s\"\n",args[5]);
 		return 0;
 	}
+	// include sequences
 	for (int i=0; i<count; ++i)
 	{
 		fprintf(cfg,"sequence '%03d\\%03d.cfg'\n",i,i);
 	}
 	fclose(cfg);
+	
+	bool _mid = true;
+	for (int i=0; i<sequences.size(); ++i)
+		if (sequences_used[i] != _mid)
+		{
+			if (_mid)
+				printf("Sequences not used bytes: $%X",i);
+			else
+				printf("-$%X\n",i);
+			_mid = sequences_used[i];
+		}
+	if (!_mid)
+		printf("-$%X\n",sequences.size());
 	return 0;
 }

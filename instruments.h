@@ -43,7 +43,7 @@ struct GemsFMOperator
 	BYTE RR  ;  // : 4; // Release Rate
 
 	void Set(const BYTE *data);
-	void Write(BYTE *data);
+	void Write(BYTE *data) const;
 };
 
 struct GemsFM : GemsInstrument
@@ -78,13 +78,26 @@ struct GemsFM : GemsInstrument
 	BYTE unk8[0];
 
 	void Set(const BYTE *data);
-	void Write(BYTE *data);
+	void Write(BYTE *data) const;
 	
 	// returns KEY on
-	bool IsOn(int op);
+	bool IsOn(int op) const;
 	
 	// returns true if Volume depends Operator TL.
-	bool GemsFM::IsCarrier(int op);
+	bool GemsFM::IsCarrier(int op) const;
+};
+
+struct GemsPSG : GemsInstrument
+{
+	BYTE ND; // ?????xxx Noise Data
+	BYTE AR; // xxxxxxxx Attack Rate
+	BYTE SL; // 0000xxxx Sustain Level
+	BYTE AL; // 0000xxxx Attack Level
+	BYTE DR; // xxxxxxxx Decay Rate
+	BYTE RR; // xxxxxxxx Release Rate
+
+	void Set(const BYTE *data);
+	void Write(BYTE *data) const;
 };
 
 #endif

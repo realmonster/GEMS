@@ -50,7 +50,7 @@ void GemsFM::Set(const BYTE *data)
 	unk7 = data[38];
 }
 
-void GemsFM::Write(BYTE *data)
+void GemsFM::Write(BYTE *data) const
 {
 	// Offset 0
 	data[0] = type;
@@ -87,12 +87,12 @@ void GemsFM::Write(BYTE *data)
 	data[38] = unk7;
 }
 
-bool GemsFM::IsOn(int op)
+bool GemsFM::IsOn(int op) const
 {
 	return KEY&(1<<op);
 }
 
-bool GemsFM::IsCarrier(int op)
+bool GemsFM::IsCarrier(int op) const
 {
 	return FM_ALG_Carriers[ALG]&(1<<op);
 }
@@ -127,7 +127,7 @@ void GemsFMOperator::Set(const BYTE *data)
 	RR = data[5]&0xF;
 }
 
-void GemsFMOperator::Write(BYTE *data)
+void GemsFMOperator::Write(BYTE *data) const
 {
 	// Offset 0
 	data[0] = (unk1<<7)
@@ -156,3 +156,26 @@ void GemsFMOperator::Write(BYTE *data)
 	data[5] = (SL<<4)
 	         |(RR&0xF);
 }
+
+void GemsPSG::Set(const BYTE *data)
+{
+	type = data[0];
+	ND = data[1];
+	AR = data[2];
+	SL = data[3];
+	AL = data[4];
+	DR = data[5];
+	RR = data[6];
+};
+
+
+void GemsPSG::Write(BYTE *data) const
+{
+	data[0] = type;
+	data[1] = ND;
+	data[2] = AR;
+	data[3] = SL;
+	data[4] = AL;
+	data[5] = DR;
+	data[6] = RR;
+};
