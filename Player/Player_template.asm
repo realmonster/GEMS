@@ -23,13 +23,17 @@
  jmp custom_update  ; your custom update
  ; RIGHT after them
  dc.l $A00884+1 ; tempo ptr, set to 0 if you don't know.
+ dc.l $A01B80   ; ccb ptr
  dc.w _sequences_count-1 ; sequences count (BGM = SFX)
  dc.b _samples_count-1 ; dac count
  dc.b _dac_patch ; dac patch
  
  even
  
+ ; Right after them - titles
  include 'sequences_info.asm'
+
+ ; add anything else from here
 
  include 'GEMS.asm'
  

@@ -1123,9 +1123,13 @@ int include_instrument(string path)
 	f = patches.find(hv);
 	if (f == patches.end())
 	{
+		if (ptype == GEMSI_DAC)
+			dac_patch = patches_count;
 		patches[hv] = patches_count;
 		return patches_count++;
 	}
+	if (ptype == GEMSI_DAC)
+		dac_patch = f->second;
 	return f->second;
 }
 
@@ -1739,7 +1743,6 @@ void include_sequence(string path, map<hashed_vector,int> names)
 		if (cid == 1)
 		{
 			int id = include_instrument(ppath);
-			dac_patch = id;
 			if (name.v.size())
 				symbols[sequences_count-1][name] = id;
 		}
