@@ -15,30 +15,30 @@ struct GemsInstrument
 
 struct GemsFMOperator
 {
-	// Offset 0
+	// Offset 0  (30H raw register)
 	BYTE unk1;  // : 1;
 	BYTE DT  ;  // : 3; // Detune
 	BYTE MUL ;  // : 4; // Multiply
 
-	// Offset 1
+	// Offset 1 (40H multiplied with volume)
 	BYTE unk2;  // : 1;
 	BYTE TL  ;  // : 7; // Total Level
 
-	// Offset 2
+	// Offset 2 (50H raw register)
 	BYTE RS  ;  // : 2; // Rate Scale
 	BYTE unk3;  // : 1;
 	BYTE AR  ;  // : 5; // Attack Rate
 
-	// Offset 3
+	// Offset 3 (60H raw register)
 	BYTE AM  ;  // : 1; // Amplitude Modulation
 	BYTE unk4;  // : 2;
 	BYTE DR  ;  // : 5; // Decay Rate
 
-	// Offset 4
+	// Offset 4 (70H raw register)
 	BYTE unk5;  // : 3;
 	BYTE SDR ;  // : 5; // Sustain Decay Rate
 
-	// Offset 5
+	// Offset 5 (80H raw register)
 	BYTE SL  ;  // : 4; // Sustain Level
 	BYTE RR  ;  // : 4; // Release Rate
 
@@ -54,15 +54,15 @@ struct GemsFM : GemsInstrument
 	BYTE LFO_val; // : 3; // Low Frequency Oscilator value
 
 	// Offset 2:
-	BYTE CH3    ; // : 1; // Channel 3 mode
+	BYTE CH3    ; // : 2; // Channel 3 mode
 	BYTE unk2   ; // : 6;
 
-	// Offset 3:
+	// Offset 3: (B0H raw register)
 	BYTE unk3   ; // : 2;
 	BYTE FB     ; // : 3; // Feedback
 	BYTE ALG    ; // : 3; // Algorithm
 
-	// Offset 4:
+	// Offset 4: (B4H raw register)
 	BYTE L      ; // : 1; // Left channel on
 	BYTE R      ; // : 1; // Right channel on
 	BYTE AMS    ; // : 2; // AMS
@@ -98,6 +98,58 @@ struct GemsPSG : GemsInstrument
 
 	void Set(const BYTE *data);
 	void Write(BYTE *data) const;
+};
+
+struct RawFMOperator
+{
+	BYTE reg30; // DT/MUL
+	BYTE reg40; // TL
+	BYTE reg50; // RS/AR
+	BYTE reg60; // AM/DR
+	BYTE reg70; // SDR
+	BYTE reg80; // SL/RR
+	BYTE reg90; // SSG
+};
+
+struct InstrumentConverter
+{
+	RawFMOperator op[4];
+	BYTE regB0; // FB/ALG
+	BYTE regB4; // L/R/AMS/FMS
+	BYTE reg22; // LFO bits
+	BYTE reg28; // Key On bits
+	BYTE reg27; // Channel 3 bits
+	short CH3_F[4];
+	void Set(const BYTE *data);
+	void Write(BYTE *data) const;
+
+	// size 39
+	void ImportGems(const BYTE *data);
+	void ExportGems(BYTE *data) const;
+
+	// size 32
+	void ImportTYI(const BYTE *data);
+	void ExportTYI(BYTE *data) const;
+
+	// size 42
+	void ImportTFI(const BYTE *data);
+	void ExportTFI(BYTE *data) const;
+
+	// size 29
+	void ImportEIF(const BYTE *data);
+	void ExportEIF(BYTE *data) const;
+
+	// size 128
+	void ImportY12(const BYTE *data);
+	void ExportY12(BYTE *data) const;
+
+	// size 43
+	void ImportVGI(const BYTE *data);
+	void ExportVGI(BYTE *data) const;
+
+	// size 51
+	void ImportDMP(const BYTE *data);
+	void ExportDMP(BYTE *data) const;
 };
 
 #endif

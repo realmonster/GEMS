@@ -168,7 +168,6 @@ void GemsPSG::Set(const BYTE *data)
 	RR = data[6];
 };
 
-
 void GemsPSG::Write(BYTE *data) const
 {
 	data[0] = type;
@@ -179,3 +178,191 @@ void GemsPSG::Write(BYTE *data) const
 	data[5] = DR;
 	data[6] = RR;
 };
+
+void InstrumentConverter::Set(const BYTE *data)
+{
+	int j = 0;
+	for (int i=0; i<4; ++i)
+	{
+		op[i].reg30 = data[j++];
+		op[i].reg40 = data[j++];
+		op[i].reg50 = data[j++];
+		op[i].reg60 = data[j++];
+		op[i].reg70 = data[j++];
+		op[i].reg80 = data[j++];
+		op[i].reg90 = data[j++];
+	}
+	regB0 = data[j++];
+	regB4 = data[j++];
+	reg22 = data[j++];
+	reg28 = data[j++];
+	reg27 = data[j++];
+	for (int i=0; i<4; ++i)
+	{
+		CH3_F[i] = data[j++];
+		CH3_F[i] |= (data[j++]<<8);
+	}
+}
+
+void InstrumentConverter::Write(BYTE *data) const
+{
+	int j = 0;
+	for (int i=0; i<4; ++i)
+	{
+		data[j++] = op[i].reg30;
+		data[j++] = op[i].reg40;
+		data[j++] = op[i].reg50;
+		data[j++] = op[i].reg60;
+		data[j++] = op[i].reg70;
+		data[j++] = op[i].reg80;
+		data[j++] = op[i].reg90;
+	}
+	data[j++] = regB0;
+	data[j++] = regB4;
+	data[j++] = reg22;
+	data[j++] = reg28;
+	data[j++] = reg27;
+	for (int i=0; i<4; ++i)
+	{
+		data[j++] = CH3_F[i];
+		data[j++] = CH3_F[i]>>8;
+	}
+}
+
+void InstrumentConverter::ImportGems(const BYTE *data)
+{
+	int j = 0;
+	reg22 = data[j++]; // LFO
+	reg27 = data[j++]; // CSM
+	regB0 = data[j++]; // FB/ALG
+	regB4 = data[j++]; // L/R/AMS/FMS
+	for (int i=0; i<4; ++i)
+	{
+		op[i].reg30 = data[j++]; // DT/MUL
+		op[i].reg40 = data[j++]; // TL
+		op[i].reg50 = data[j++]; // RS/AR
+		op[i].reg60 = data[j++]; // AM/DR
+		op[i].reg70 = data[j++]; // SR
+		op[i].reg80 = data[j++]; // SL/RR
+		op[i].reg90 = 0;         // SSG
+	}
+	for (int i=0; i<4; ++i)
+	{
+		CH3_F[i] = (data[j++]<<8);
+		CH3_F[i] = data[j++];
+	}
+	reg28 = data[j++]<<4; // Key On
+}
+
+void InstrumentConverter::ExportGems(BYTE *data) const
+{
+	int j = 0;
+	data[j++] = reg22; // LFO
+	data[j++] = reg27; // CSM
+	data[j++] = regB0; // FB/ALG
+	data[j++] = regB4; // L/R/AMS/FMS
+	for (int i=0; i<4; ++i)
+	{
+		data[j++] = op[i].reg30; // DT/MUL
+		data[j++] = op[i].reg40; // TL
+		data[j++] = op[i].reg50; // RS/AR
+		data[j++] = op[i].reg60; // AM/DR
+		data[j++] = op[i].reg70; // SR
+		data[j++] = op[i].reg80; // SL/RR
+	}
+	for (int i=0; i<4; ++i)
+	{
+		data[j++] = CH3_F[i]>>8;
+		data[j++] = CH3_F[i];
+	}
+	data[j++] = reg28>>4; // Key On
+}
+
+void InstrumentConverter::ImportTYI(const BYTE *data)
+{
+	for (int i=0; i<4; ++i)
+	{
+		op[i].reg30 = data[ 0+i]; // DT/MUL
+		op[i].reg40 = data[ 4+i]; // TL
+		op[i].reg50 = data[ 8+i]; // RS/AR
+		op[i].reg60 = data[12+i]; // AM/DR
+		op[i].reg70 = data[16+i]; // SR
+		op[i].reg80 = data[20+i]; // SL/RR
+		op[i].reg90 = data[24+i]; // SSG
+	}
+	regB0 = data[28]; // FB/ALG
+	regB4 = data[29]; // FMS/AMS
+	// 30, 31 = YI
+	reg22 = 0;    // LFO = Off
+	reg28 = 0xF0; // Key On = All
+	reg27 = 0;    // CSM = Off
+	for (int i=0; i<4; ++i)
+		CH3_F[i] = 0;
+}
+
+void InstrumentConverter::ExportTYI(BYTE *data) const
+{
+	int j = 0;
+	for (int i=0; i<4; ++i)
+	{
+		data[ 0+i] = op[i].reg30; // DT/MUL
+		data[ 4+i] = op[i].reg40; // TL
+		data[ 8+i] = op[i].reg50; // RS/AR
+		data[12+i] = op[i].reg60; // AM/DR
+		data[16+i] = op[i].reg70; // SR
+		data[20+i] = op[i].reg80; // SL/RR
+		data[24+i] = op[i].reg90; // SSG
+	}
+	data[28] = regB0; // FB/ALG
+	data[29] = regB4; // FMS/AMS
+	data[30] = 'Y';
+	data[31] = 'I';
+}
+
+void InstrumentConverter::ImportTFI(const BYTE *data)
+{
+	for (int i=0; i<4; ++i)
+	{
+		int j = ((i<<1)|(i>>1))&3;
+		const BYTE *p = data+2+i*10;
+		op[j].reg30 = p[0]&0xF; // MUL;
+		int dt = p[1]&7;
+		dt -= 3;
+		op[j].reg30 |= (dt<0?(-dt)|4:dt)<<4; // DT
+		op[j].reg40 = p[2]&0x7F; // TL
+		op[j].reg50 = (p[4]&0x1F)|(p[3]<<6); // AR
+		op[j].reg60 = p[5]&0x1F;     // DR
+		op[j].reg70 = p[6]&0x1F;     // SDR
+		op[j].reg80 = (p[8]<<4)|p[7];// SL/RR
+		op[j].reg90 = p[9]&0xF;      // SSG
+	}
+	regB0 = (data[0]&7)|((data[1]&7)<<3); // FB/ALG
+	regB4 = 0xC0; // L/R/FMS/AMS
+	// 30, 31 = YI
+	reg22 = 0;    // LFO = Off
+	reg28 = 0xF0; // Key On = All
+	reg27 = 0;    // CSM = Off
+	for (int i=0; i<4; ++i)
+		CH3_F[i] = 0;
+}
+
+void InstrumentConverter::ExportTFI(BYTE *data) const
+{
+	data[0] = regB0&7; // ALG
+	data[1] = (regB0>>3)&7; // FB
+	for (int i=0; i<4; ++i)
+	{
+		int j = ((i<<1)|(i>>1))&3;
+		BYTE *p = data+2+i*10;
+		p[0] = op[j].reg30&0xF; // MUL;
+		p[1] = 3+((op[j].reg30>>4)&3)*(op[j].reg30&0x40?-1:1); // DT
+		p[2] = op[j].reg40&0x7F; // TL
+		p[3] = op[j].reg50>>6;   // RS
+		p[4] = op[j].reg50&0x1F; // AR
+		p[5] = op[j].reg60&0x1F; // DR
+		p[6] = op[j].reg70&0x1F; // SDR
+		p[7] = op[j].reg80&0xF;  // RR
+		p[8] = op[j].reg80>>4;   // SL
+		p[9] = op[j].reg90&0xF;  // SSG
+	}
+}
