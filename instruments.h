@@ -69,9 +69,9 @@ struct GemsFM : GemsInstrument
 	BYTE unk4   ; // : 1;
 	BYTE FMS    ; // : 3; // FMS
 
-	// Offset 5;
-	GemsFMOperator OP[4];
-	short CH3_F[4]; //  Channel 3 Frequency
+	// Offset 5: operators in order: 1,3,2,4
+	GemsFMOperator OP[4]; // here in 1,2,3,4 order
+	short CH3_F[4]; // Channel 3 Frequency in 1,2,3,4 order
 	BYTE unk6   ; // : 4;
 	BYTE KEY    ; // : 4; // Operator On[4]
 	BYTE unk7   ; // : 8;
@@ -113,13 +113,13 @@ struct RawFMOperator
 
 struct InstrumentConverter
 {
-	RawFMOperator op[4];
+	RawFMOperator op[4]; // in 1,2,3,4 order
 	BYTE regB0; // FB/ALG
 	BYTE regB4; // L/R/AMS/FMS
 	BYTE reg22; // LFO bits
 	BYTE reg28; // Key On bits
 	BYTE reg27; // Channel 3 bits
-	short CH3_F[4];
+	short CH3_F[4]; // Channel 3 Frequency in 1,2,3,4 order
 	void Set(const BYTE *data);
 	void Write(BYTE *data) const;
 

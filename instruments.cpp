@@ -231,51 +231,53 @@ void InstrumentConverter::Write(BYTE *data) const
 
 void InstrumentConverter::ImportGems(const BYTE *data)
 {
-	int j = 0;
-	reg22 = data[j++]; // LFO
-	reg27 = data[j++]; // CSM
-	regB0 = data[j++]; // FB/ALG
-	regB4 = data[j++]; // L/R/AMS/FMS
+	reg22 = data[1]; // LFO
+	reg27 = data[2]; // CSM
+	regB0 = data[3]; // FB/ALG
+	regB4 = data[4]; // L/R/AMS/FMS
 	for (int i=0; i<4; ++i)
 	{
-		op[i].reg30 = data[j++]; // DT/MUL
-		op[i].reg40 = data[j++]; // TL
-		op[i].reg50 = data[j++]; // RS/AR
-		op[i].reg60 = data[j++]; // AM/DR
-		op[i].reg70 = data[j++]; // SR
-		op[i].reg80 = data[j++]; // SL/RR
-		op[i].reg90 = 0;         // SSG
+		const BYTE *p = data+5+(((i<<1)|(i>>1))&3)*6;
+		op[i].reg30 = p[0]; // DT/MUL
+		op[i].reg40 = p[1]; // TL
+		op[i].reg50 = p[2]; // RS/AR
+		op[i].reg60 = p[3]; // AM/DR
+		op[i].reg70 = p[4]; // SR
+		op[i].reg80 = p[5]; // SL/RR
+		op[i].reg90 = 0;    // SSG
 	}
 	for (int i=0; i<4; ++i)
 	{
-		CH3_F[i] = (data[j++]<<8);
-		CH3_F[i] = data[j++];
+		CH3_F[i] = (data[29+i*2]<<8);
+		CH3_F[i] |= data[30+i*2];
 	}
-	reg28 = data[j++]<<4; // Key On
+	reg28 = data[37]<<4; // Key On
 }
 
 void InstrumentConverter::ExportGems(BYTE *data) const
 {
-	int j = 0;
-	data[j++] = reg22; // LFO
-	data[j++] = reg27; // CSM
-	data[j++] = regB0; // FB/ALG
-	data[j++] = regB4; // L/R/AMS/FMS
+	data[0] = 0; // type
+	data[1] = reg22; // LFO
+	data[2] = reg27; // CSM
+	data[3] = regB0; // FB/ALG
+	data[4] = regB4; // L/R/AMS/FMS
 	for (int i=0; i<4; ++i)
 	{
-		data[j++] = op[i].reg30; // DT/MUL
-		data[j++] = op[i].reg40; // TL
-		data[j++] = op[i].reg50; // RS/AR
-		data[j++] = op[i].reg60; // AM/DR
-		data[j++] = op[i].reg70; // SR
-		data[j++] = op[i].reg80; // SL/RR
+		BYTE *p = data+5+(((i<<1)|(i>>1))&3)*6;
+		p[0] = op[i].reg30; // DT/MUL
+		p[1] = op[i].reg40; // TL
+		p[2] = op[i].reg50; // RS/AR
+		p[3] = op[i].reg60; // AM/DR
+		p[4] = op[i].reg70; // SR
+		p[5] = op[i].reg80; // SL/RR
 	}
 	for (int i=0; i<4; ++i)
 	{
-		data[j++] = CH3_F[i]>>8;
-		data[j++] = CH3_F[i];
+		data[29+i*2] = CH3_F[i]>>8;
+		data[30+i*2] = CH3_F[i];
 	}
-	data[j++] = reg28>>4; // Key On
+	data[37] = reg28>>4; // Key On
+	data[38] = 0; // Unknown
 }
 
 static int TL(const InstrumentConverter *ins, int op)
@@ -352,16 +354,15 @@ void InstrumentConverter::ImportTFI(const BYTE *data)
 	regB0 = (data[0]&7)|((data[1]&7)<<3); // FB/ALG
 	for (int i=0; i<4; ++i)
 	{
-		int j = ((i<<1)|(i>>1))&3;
-		const BYTE *p = data+2+i*10;
-		op[j].reg30 = p[0]&0xF; // MUL
-		op[j].reg30 |= RawDT((p[1]&7)-3)<<4; // DT
-		op[j].reg40 = p[2]&0x7F; // TL
-		op[j].reg50 = (p[4]&0x1F)|(p[3]<<6); // RS/AR
-		op[j].reg60 = p[5]&0x1F;     // DR
-		op[j].reg70 = p[6]&0x1F;     // SDR
-		op[j].reg80 = (p[8]<<4)|p[7];// SL/RR
-		op[j].reg90 = p[9]&0xF;      // SSG
+		const BYTE *p = data+2+(((i<<1)|(i>>1))&3)*10;
+		op[i].reg30 = p[0]&0xF; // MUL
+		op[i].reg30 |= RawDT((p[1]&7)-3)<<4; // DT
+		op[i].reg40 = p[2]&0x7F; // TL
+		op[i].reg50 = (p[4]&0x1F)|(p[3]<<6); // RS/AR
+		op[i].reg60 = p[5]&0x1F;     // DR
+		op[i].reg70 = p[6]&0x1F;     // SDR
+		op[i].reg80 = (p[8]<<4)|p[7];// SL/RR
+		op[i].reg90 = p[9]&0xF;      // SSG
 	}
 	regB4 = 0xC0; // L/R/FMS/AMS
 	reg22 = 0;    // LFO = Off
@@ -377,18 +378,17 @@ void InstrumentConverter::ExportTFI(BYTE *data) const
 	data[1] = (regB0>>3)&7; // FB
 	for (int i=0; i<4; ++i)
 	{
-		int j = ((i<<1)|(i>>1))&3;
-		BYTE *p = data+2+i*10;
-		p[0] = op[j].reg30&0xF;  // MUL
-		p[1] = 3 + DT(this, j);  // DT
-		p[2] = TL(this, j);      // TL
-		p[3] = op[j].reg50>>6;   // RS
-		p[4] = op[j].reg50&0x1F; // AR
-		p[5] = op[j].reg60&0x1F; // DR
-		p[6] = op[j].reg70&0x1F; // SDR
-		p[7] = op[j].reg80&0xF;  // RR
-		p[8] = op[j].reg80>>4;   // SL
-		p[9] = op[j].reg90&0xF;  // SSG
+		BYTE *p = data+2+(((i<<1)|(i>>1))&3)*10;
+		p[0] = op[i].reg30&0xF;  // MUL
+		p[1] = 3 + DT(this, i);  // DT
+		p[2] = TL(this, i);      // TL
+		p[3] = op[i].reg50>>6;   // RS
+		p[4] = op[i].reg50&0x1F; // AR
+		p[5] = op[i].reg60&0x1F; // DR
+		p[6] = op[i].reg70&0x1F; // SDR
+		p[7] = op[i].reg80&0xF;  // RR
+		p[8] = op[i].reg80>>4;   // SL
+		p[9] = op[i].reg90&0xF;  // SSG
 	}
 }
 
@@ -484,20 +484,19 @@ void InstrumentConverter::ExportY12(BYTE *data) const
 
 void InstrumentConverter::ImportVGI(const BYTE *data)
 {
-	regB0 = (data[0]&7)|((data[1]&7)<<3; // FB/ALG
-	regB4 = data[2]; // L/R/FMS/AMS
+	regB0 = (data[0]&7)|((data[1]&7)<<3); // FB/ALG
+	regB4 = data[2]|0xC0; // L/R/FMS/AMS
 	for (int i=0; i<4; ++i)
 	{
-		int j = ((i<<1)|(i>>1))&3;
-		BYTE *p = data+3+i*10;
-		op[j].reg30 = p[0]&0xF; // MUL
-		op[j].reg30 |= RawDT((p[1]&7)-3)<<4; // DT
-		op[j].reg40 = p[2]&0x7F; // TL
-		op[j].reg50 = (p[4]&0x1F)|(p[3]<<6); // RS/AR
-		op[j].reg60 = p[5]&0x1F;     // DR
-		op[j].reg70 = p[6]&0x1F;     // SDR
-		op[j].reg80 = (p[8]<<4)|p[7];// SL/RR
-		op[j].reg90 = p[9]&0xF;      // SSG
+		const BYTE *p = data+3+(((i<<1)|(i>>1))&3)*10;
+		op[i].reg30 = p[0]&0xF; // MUL
+		op[i].reg30 |= RawDT((p[1]&7)-3)<<4; // DT
+		op[i].reg40 = p[2]&0x7F; // TL
+		op[i].reg50 = (p[4]&0x1F)|(p[3]<<6); // RS/AR
+		op[i].reg60 = p[5];          // AM/DR
+		op[i].reg70 = p[6]&0x1F;     // SDR
+		op[i].reg80 = (p[8]<<4)|p[7];// SL/RR
+		op[i].reg90 = p[9]&0xF;      // SSG
 	}
 	reg22 = 0;    // LFO = Off
 	reg28 = 0xF0; // Key On = All
@@ -505,25 +504,25 @@ void InstrumentConverter::ImportVGI(const BYTE *data)
 	for (int i=0; i<4; ++i)
 		CH3_F[i] = 0;
 }
+#include <cstdio>
 
 void InstrumentConverter::ExportVGI(BYTE *data) const
 {
 	data[0] = regB0&7; // ALG
 	data[1] = (regB0>>3)&7; // FB
-	data[2] = regB4; // L/R/FMS/AMS
+	data[2] = regB4&0x3F; // L/R/FMS/AMS (without L/R)
 	for (int i=0; i<4; ++i)
 	{
-		int j = ((i<<1)|(i>>1))&3;
-		BYTE *p = data+3+i*10;
-		p[0] = op[j].reg30&0xF;  // MUL
-		p[1] = 3 + DT(this, j);  // DT
-		p[2] = TL(this, j);      // TL
-		p[3] = op[j].reg50>>6;   // RS
-		p[4] = op[j].reg50&0x1F; // AR
-		p[5] = op[j].reg60;      // AM/DR
-		p[6] = op[j].reg70&0x1F; // SDR
-		p[7] = op[j].reg80&0xF;  // RR
-		p[8] = op[j].reg80>>4;   // SL
-		p[9] = op[j].reg90&0xF;  // SSG
+		BYTE *p = data+3+(((i<<1)|(i>>1))&3)*10;
+		p[0] = op[i].reg30&0xF;  // MUL
+		p[1] = 3 + DT(this, i);  // DT
+		p[2] = TL(this, i);      // TL
+		p[3] = op[i].reg50>>6;   // RS
+		p[4] = op[i].reg50&0x1F; // AR
+		p[5] = op[i].reg60;      // AM/DR
+		p[6] = op[i].reg70&0x1F; // SDR
+		p[7] = op[i].reg80&0xF;  // RR
+		p[8] = op[i].reg80>>4;   // SL
+		p[9] = op[i].reg90&0xF;  // SSG
 	}
 }
