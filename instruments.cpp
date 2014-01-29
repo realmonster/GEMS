@@ -184,19 +184,19 @@ void InstrumentConverter::Set(const BYTE *data)
 	int j = 0;
 	for (int i=0; i<4; ++i)
 	{
-		op[i].reg30 = data[j++];
-		op[i].reg40 = data[j++];
-		op[i].reg50 = data[j++];
-		op[i].reg60 = data[j++];
-		op[i].reg70 = data[j++];
-		op[i].reg80 = data[j++];
-		op[i].reg90 = data[j++];
+		op[i].reg30 = data[j++]; // DT/MUL
+		op[i].reg40 = data[j++]; // TL
+		op[i].reg50 = data[j++]; // RS/AR
+		op[i].reg60 = data[j++]; // AM/DR
+		op[i].reg70 = data[j++]; // SR
+		op[i].reg80 = data[j++]; // SL/RR
+		op[i].reg90 = data[j++]; // SSG
 	}
-	regB0 = data[j++];
-	regB4 = data[j++];
-	reg22 = data[j++];
-	reg28 = data[j++];
-	reg27 = data[j++];
+	regB0 = data[j++]; // FB/ALG
+	regB4 = data[j++]; // L/R/AMS/FMS
+	reg22 = data[j++]; // LFO
+	reg28 = data[j++]; // Key On
+	reg27 = data[j++]; // CSM
 	for (int i=0; i<4; ++i)
 	{
 		CH3_F[i] = data[j++];
@@ -209,19 +209,19 @@ void InstrumentConverter::Write(BYTE *data) const
 	int j = 0;
 	for (int i=0; i<4; ++i)
 	{
-		data[j++] = op[i].reg30;
-		data[j++] = op[i].reg40;
-		data[j++] = op[i].reg50;
-		data[j++] = op[i].reg60;
-		data[j++] = op[i].reg70;
-		data[j++] = op[i].reg80;
-		data[j++] = op[i].reg90;
+		data[j++] = op[i].reg30; // DT/MUL
+		data[j++] = op[i].reg40; // TL
+		data[j++] = op[i].reg50; // RS/AR
+		data[j++] = op[i].reg60; // AM/DR
+		data[j++] = op[i].reg70; // SR
+		data[j++] = op[i].reg80; // SL/RR
+		data[j++] = op[i].reg90; // SSG
 	}
-	data[j++] = regB0;
-	data[j++] = regB4;
-	data[j++] = reg22;
-	data[j++] = reg28;
-	data[j++] = reg27;
+	data[j++] = regB0; // FB/ALG
+	data[j++] = regB4; // L/R/AMS/FMS
+	data[j++] = reg22; // LFO
+	data[j++] = reg28; // Key On
+	data[j++] = reg27; // CSM
 	for (int i=0; i<4; ++i)
 	{
 		data[j++] = CH3_F[i];
@@ -278,6 +278,34 @@ void InstrumentConverter::ExportGems(BYTE *data) const
 	data[j++] = reg28>>4; // Key On
 }
 
+static int TL(const InstrumentConverter *ins, int op)
+{
+	// if key on, then TL, else 0x7F.
+	if ((ins->reg28)&(1<<(op+4)))
+		return ins->op[op].reg40&0x7F; // TL
+	else
+		return 0x7F; // OFF
+}
+
+// get signed DT from raw DT
+static int DT(const InstrumentConverter *ins, int op)
+{
+	int dt = (ins->op[op].reg30>>4)&3;
+	if (ins->op[op].reg30&0x40)
+		return -dt;
+	else
+		return dt;
+}
+
+// get raw DT from signed DT
+static int RawDT(int dt)
+{
+	if (dt<0)
+		return ((-dt)&3)|4;
+	else
+		return (dt)&3;
+}
+
 void InstrumentConverter::ImportTYI(const BYTE *data)
 {
 	for (int i=0; i<4; ++i)
@@ -306,7 +334,7 @@ void InstrumentConverter::ExportTYI(BYTE *data) const
 	for (int i=0; i<4; ++i)
 	{
 		data[ 0+i] = op[i].reg30; // DT/MUL
-		data[ 4+i] = op[i].reg40; // TL
+		data[ 4+i] = TL(this, i); // TL
 		data[ 8+i] = op[i].reg50; // RS/AR
 		data[12+i] = op[i].reg60; // AM/DR
 		data[16+i] = op[i].reg70; // SR
@@ -321,24 +349,21 @@ void InstrumentConverter::ExportTYI(BYTE *data) const
 
 void InstrumentConverter::ImportTFI(const BYTE *data)
 {
+	regB0 = (data[0]&7)|((data[1]&7)<<3); // FB/ALG
 	for (int i=0; i<4; ++i)
 	{
 		int j = ((i<<1)|(i>>1))&3;
 		const BYTE *p = data+2+i*10;
-		op[j].reg30 = p[0]&0xF; // MUL;
-		int dt = p[1]&7;
-		dt -= 3;
-		op[j].reg30 |= (dt<0?(-dt)|4:dt)<<4; // DT
+		op[j].reg30 = p[0]&0xF; // MUL
+		op[j].reg30 |= RawDT((p[1]&7)-3)<<4; // DT
 		op[j].reg40 = p[2]&0x7F; // TL
-		op[j].reg50 = (p[4]&0x1F)|(p[3]<<6); // AR
+		op[j].reg50 = (p[4]&0x1F)|(p[3]<<6); // RS/AR
 		op[j].reg60 = p[5]&0x1F;     // DR
 		op[j].reg70 = p[6]&0x1F;     // SDR
 		op[j].reg80 = (p[8]<<4)|p[7];// SL/RR
 		op[j].reg90 = p[9]&0xF;      // SSG
 	}
-	regB0 = (data[0]&7)|((data[1]&7)<<3); // FB/ALG
 	regB4 = 0xC0; // L/R/FMS/AMS
-	// 30, 31 = YI
 	reg22 = 0;    // LFO = Off
 	reg28 = 0xF0; // Key On = All
 	reg27 = 0;    // CSM = Off
@@ -354,12 +379,148 @@ void InstrumentConverter::ExportTFI(BYTE *data) const
 	{
 		int j = ((i<<1)|(i>>1))&3;
 		BYTE *p = data+2+i*10;
-		p[0] = op[j].reg30&0xF; // MUL;
-		p[1] = 3+((op[j].reg30>>4)&3)*(op[j].reg30&0x40?-1:1); // DT
-		p[2] = op[j].reg40&0x7F; // TL
+		p[0] = op[j].reg30&0xF;  // MUL
+		p[1] = 3 + DT(this, j);  // DT
+		p[2] = TL(this, j);      // TL
 		p[3] = op[j].reg50>>6;   // RS
 		p[4] = op[j].reg50&0x1F; // AR
 		p[5] = op[j].reg60&0x1F; // DR
+		p[6] = op[j].reg70&0x1F; // SDR
+		p[7] = op[j].reg80&0xF;  // RR
+		p[8] = op[j].reg80>>4;   // SL
+		p[9] = op[j].reg90&0xF;  // SSG
+	}
+}
+
+void InstrumentConverter::ImportEIF(const BYTE *data)
+{
+	regB0 = data[0]; // FB/ALG
+	for (int i=0; i<4; ++i)
+	{
+		int j = ((i<<1)|(i>>1))&3;
+		const BYTE *p = data+1+i*7;
+		op[j].reg30 = p[0]; // DT/MUL
+		op[j].reg40 = p[1]; // TL
+		op[j].reg50 = p[2]; // RS/AR
+		op[j].reg60 = p[3]; // AM/DR
+		op[j].reg70 = p[4]; // SDR
+		op[j].reg80 = p[5]; // RR/SL
+		op[j].reg90 = p[6]; // SSG
+	}
+	regB4 = 0xC0; // L/R/FMS/AMS
+	reg22 = 0;    // LFO = Off
+	reg28 = 0xF0; // Key On = All
+	reg27 = 0;    // CSM = Off
+	for (int i=0; i<4; ++i)
+		CH3_F[i] = 0;
+}
+
+void InstrumentConverter::ExportEIF(BYTE *data) const
+{
+	data[0] = regB0; // FB/ALG
+	for (int i=0; i<4; ++i)
+	{
+		int j = ((i<<1)|(i>>1))&3;
+		BYTE *p = data+1+i*7;
+		p[0] = op[j].reg30; // DT/MUL
+		p[1] = TL(this, j); // TL
+		p[2] = op[j].reg50; // RS/AR
+		p[3] = op[j].reg60; // AM/DR
+		p[4] = op[j].reg70; // SDR
+		p[5] = op[j].reg80; // RR/SL
+		p[6] = op[j].reg90; // SSG
+	}
+}
+
+void InstrumentConverter::ImportY12(const BYTE *data)
+{
+	for (int i=0; i<4; ++i)
+	{
+		int j = ((i<<1)|(i>>1))&3;
+		const BYTE *p = data+i*16;
+		op[j].reg30 = p[0]; // DT/MUL
+		op[j].reg40 = p[1]; // TL
+		op[j].reg50 = p[2]; // RS/AR
+		op[j].reg60 = p[3]; // AM/DR - AM is not used?
+		op[j].reg70 = p[4]; // SDR
+		op[j].reg80 = p[5]; // RR/SL
+		op[j].reg90 = 0;    // SSG
+	}
+	regB0 = (data[40]&7)|((data[41]&7)<<3); // FB/ALG
+	regB4 = 0xC0; // L/R/FMS/AMS
+	reg22 = 0;    // LFO = Off
+	reg28 = 0xF0; // Key On = All
+	reg27 = 0;    // CSM = Off
+	for (int i=0; i<4; ++i)
+		CH3_F[i] = 0;
+}
+
+void InstrumentConverter::ExportY12(BYTE *data) const
+{
+	for (int i=0; i<4; ++i)
+	{
+		int j = ((i<<1)|(i>>1))&3;
+		BYTE *p = data+i*16;
+		p[0] = op[j].reg30; // DT/MUL
+		p[1] = TL(this, j); // TL
+		p[2] = op[j].reg50; // RS/AR
+		p[3] = op[j].reg60; // AM/DR - AM is not used?
+		p[4] = op[j].reg70; // SDR
+		p[5] = op[j].reg80; // RR/SL
+		for (int k=0; k<10; ++k)
+			p[6+k] = 0; // Reserved
+	}
+	data[0x40] = regB0&7; // ALG
+	data[0x41] = (regB0>>3)&7; // FB
+	for (int k=0; k<0xE; ++k)
+		data[0x42+k] = 0; // Reserved
+	for (int k=0; k<0x10; ++k)
+	{
+		data[0x50+k] = 0; // Name
+		data[0x60+k] = 0; // Dumper
+		data[0x70+k] = 0; // Game
+	}
+}
+
+void InstrumentConverter::ImportVGI(const BYTE *data)
+{
+	regB0 = (data[0]&7)|((data[1]&7)<<3; // FB/ALG
+	regB4 = data[2]; // L/R/FMS/AMS
+	for (int i=0; i<4; ++i)
+	{
+		int j = ((i<<1)|(i>>1))&3;
+		BYTE *p = data+3+i*10;
+		op[j].reg30 = p[0]&0xF; // MUL
+		op[j].reg30 |= RawDT((p[1]&7)-3)<<4; // DT
+		op[j].reg40 = p[2]&0x7F; // TL
+		op[j].reg50 = (p[4]&0x1F)|(p[3]<<6); // RS/AR
+		op[j].reg60 = p[5]&0x1F;     // DR
+		op[j].reg70 = p[6]&0x1F;     // SDR
+		op[j].reg80 = (p[8]<<4)|p[7];// SL/RR
+		op[j].reg90 = p[9]&0xF;      // SSG
+	}
+	reg22 = 0;    // LFO = Off
+	reg28 = 0xF0; // Key On = All
+	reg27 = 0;    // CSM = Off
+	for (int i=0; i<4; ++i)
+		CH3_F[i] = 0;
+}
+
+void InstrumentConverter::ExportVGI(BYTE *data) const
+{
+	data[0] = regB0&7; // ALG
+	data[1] = (regB0>>3)&7; // FB
+	data[2] = regB4; // L/R/FMS/AMS
+	for (int i=0; i<4; ++i)
+	{
+		int j = ((i<<1)|(i>>1))&3;
+		BYTE *p = data+3+i*10;
+		p[0] = op[j].reg30&0xF;  // MUL
+		p[1] = 3 + DT(this, j);  // DT
+		p[2] = TL(this, j);      // TL
+		p[3] = op[j].reg50>>6;   // RS
+		p[4] = op[j].reg50&0x1F; // AR
+		p[5] = op[j].reg60;      // AM/DR
 		p[6] = op[j].reg70&0x1F; // SDR
 		p[7] = op[j].reg80&0xF;  // RR
 		p[8] = op[j].reg80>>4;   // SL
