@@ -536,6 +536,99 @@ void InstrumentConverter::ExportVGI(BYTE *data) const
 	}
 }
 
+int InstrumentConverter::ImportDMP(const BYTE *data)
+{
+	int ver = data[0];
+	if (ver > 8) // Version not supported
+		return 1;
+	if (ver > 4 && data[1] != 1) // STD instrument not supported
+		return 2;
+	// v5 data[2] - ignored by DefleMask for Genesis system
+	if (ver > 4)
+		data += 2; // skip 2 bytes
+	regB0 = ((data[2]&7)<<3)|(data[3]&7); // FB/ALG
+	regB4 = ((data[4]&3)<<4)|(data[1]&7); // AMS/FMS
+	regB4 |= 0xC0; // L/R = on
+	for (int i=0; i<4; ++i)
+	{
+		const BYTE *p = data+5+(((i<<1)|(i>>1))&3)*11;
+		op[i].reg30 = p[0]&0xF;  // MUL
+		op[i].reg40 = p[1];      // TL
+		op[i].reg50 = p[2]&0x1F; // AR
+		op[i].reg60 = p[3]&0x1F; // DR
+		op[i].reg80 = p[4]<<4;   // SL
+		op[i].reg80 |= p[5]&0xF; // RR
+		op[i].reg60 |= p[6]<<7;  // AM
+		// YM2612-specific
+		op[i].reg50 |= p[7]<<6;  // RS
+		op[i].reg30 |= RawDT((p[8]&7)-3)<<4; // DT
+		op[i].reg70 = p[9]&0x1F; // SR
+		op[i].reg90 = p[10]&0xF; // SSG
+	}
+	reg22 = 0;    // LFO = Off
+	reg28 = 0xF0; // Key On = All
+	reg27 = 0;    // CSM = Off
+	for (int i=0; i<4; ++i)
+		CH3_F[i] = 0;
+	return 0;
+}
+
+// versions 5-8 are same for Genesis
+// size = 51
+void InstrumentConverter::ExportDMP(BYTE *data) const
+{
+	data[0] = 5; // Version 5
+	data[1] = 1; // Type = FM
+	data[2] = 1; // 4 operators
+	data[3] = regB4&7; // FMS
+	data[4] = (regB0>>3)&7; // FB
+	data[5] = regB0&7; // ALG
+	data[6] = (regB4>>4)&3; // AMS
+	for (int i=0; i<4; ++i)
+	{
+		BYTE *p = data+7+(((i<<1)|(i>>1))&3)*11;
+		p[0] = op[i].reg30&0xF;  // MUL
+		p[1] = TL(this, i);      // TL
+		p[2] = op[i].reg50&0x1F; // AR
+		p[3] = op[i].reg60&0x1F; // DR
+		p[4] = op[i].reg80>>4;   // SL
+		p[5] = op[i].reg80&0xF;  // RR
+		p[6] = op[i].reg60>>7;   // AM
+		// YM2612-specific
+		p[7] = op[i].reg50>>6;   // RS
+		p[8] = 3 + DT(this, i);  // DT
+		p[9] = op[i].reg70&0x1F; // SR
+		p[10]= op[i].reg90&0xF;  // SSG
+	}
+}
+
+// versions 0-4 are same for Genesis
+// size = 49
+void InstrumentConverter::ExportDMPv0(BYTE *data) const
+{
+	data[0] = 0; // Version 0
+	data[1] = regB4&7; // FMS
+	data[2] = (regB0>>3)&7; // FB
+	data[3] = regB0&7; // ALG
+	data[4] = (regB4>>4)&3; // AMS
+	for (int i=0; i<4; ++i)
+	{
+		BYTE *p = data+5+(((i<<1)|(i>>1))&3)*11;
+		p[0] = op[i].reg30&0xF;  // MUL
+		p[1] = TL(this, i);      // TL
+		p[2] = op[i].reg50&0x1F; // AR
+		p[3] = op[i].reg60&0x1F; // DR
+		p[4] = op[i].reg80>>4;   // SL
+		p[5] = op[i].reg80&0xF;  // RR
+		p[6] = op[i].reg60>>7;   // AM
+		// YM2612-specific
+		p[7] = op[i].reg50>>6;   // RS
+		p[8] = 3 + DT(this, i);  // DT
+		p[9] = op[i].reg70&0x1F; // SR
+		p[10]= op[i].reg90&0xF;  // SSG
+	}
+}
+
 void InstrumentConverter::ImportSMPS(const BYTE *data)
 {
 	regB0 = data[0]; // FB/ALG

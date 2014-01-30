@@ -149,9 +149,10 @@ struct InstrumentConverter
 	void ImportVGI(const BYTE *data);
 	void ExportVGI(BYTE *data) const;
 
-	// size 51
-	void ImportDMP(const BYTE *data);
-	void ExportDMP(BYTE *data) const;
+	// size different (49, 51)
+	int ImportDMP(const BYTE *data); // returns != NULL if does not support
+	void ExportDMP(BYTE *data) const; // v5 size = 51
+	void ExportDMPv0(BYTE *data) const; // v0 size = 49
 
 	// size 25
 	void ImportSMPS(const BYTE *data);
