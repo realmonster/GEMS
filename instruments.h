@@ -152,6 +152,10 @@ struct InstrumentConverter
 	// size 51
 	void ImportDMP(const BYTE *data);
 	void ExportDMP(BYTE *data) const;
+
+	// size 25
+	void ImportSMPS(const BYTE *data);
+	void ExportSMPS(BYTE *data) const;
 };
 
 #endif

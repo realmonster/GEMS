@@ -535,3 +535,38 @@ void InstrumentConverter::ExportVGI(BYTE *data) const
 		p[9] = op[i].reg90&0xF;  // SSG
 	}
 }
+
+void InstrumentConverter::ImportSMPS(const BYTE *data)
+{
+	regB0 = data[0]; // FB/ALG
+	for (int i=0; i<4; ++i)
+	{
+		op[i].reg30 = data[ 1+i]; // DT/MUL
+		op[i].reg50 = data[ 5+i]; // RS/AR
+		op[i].reg60 = data[ 9+i]; // AM/DR
+		op[i].reg70 = data[13+i]; // SR
+		op[i].reg80 = data[17+i]; // SL/RR
+		op[i].reg40 = data[21+i]; // TL
+		op[i].reg90 = 0; // SSG
+	}
+	regB4 = 0xC0; // L/R/FMS/AMS
+	reg22 = 0;    // LFO = Off
+	reg28 = 0xF0; // Key On = All
+	reg27 = 0;    // CSM = Off
+	for (int i=0; i<4; ++i)
+		CH3_F[i] = 0;
+}
+
+void InstrumentConverter::ExportSMPS(BYTE *data) const
+{
+	data[0] = regB0; // FB/ALG
+	for (int i=0; i<4; ++i)
+	{
+		data[ 1+i] = op[i].reg30; // DT/MUL
+		data[ 5+i] = op[i].reg50; // RS/AR
+		data[ 9+i] = op[i].reg60; // AM/DR 
+		data[13+i] = op[i].reg70; // SR
+		data[17+i] = op[i].reg80; // SL/RR
+		data[21+i] = TL(this, i); // TL
+	}
+}
