@@ -42,9 +42,11 @@ void GemsFM::Set(const BYTE *data)
 	for (int i = 0; i < 4; ++i)
 		OP[i].Set(data + 5 + ((i<<1|i>>1)&3)*6);
 
-	for (int i = 0; i < 4; ++i)
-		CH3_F[i] = GetWordBE(data + 29 + i*2);
-	
+	CH3_F[3] = GetWordBE(data + 29);
+	CH3_F[2] = GetWordBE(data + 31);
+	CH3_F[0] = GetWordBE(data + 33);
+	CH3_F[1] = GetWordBE(data + 35);
+
 	unk6 = data[37]>>4;
 	KEY = data[37]&0xF;
 	unk7 = data[38];
@@ -79,9 +81,11 @@ void GemsFM::Write(BYTE *data) const
 	for (int i = 0; i < 4; ++i)
 		OP[i].Write(data + 5 + (((i<<1)|(i>>1))&3)*6);
 
-	for (int i = 0; i < 4; ++i)
-		SetWordBE(data + 29 + i*2, CH3_F[i]);
-	
+	SetWordBE(data + 29, CH3_F[3]);
+	SetWordBE(data + 31, CH3_F[2]);
+	SetWordBE(data + 33, CH3_F[0]);
+	SetWordBE(data + 35, CH3_F[1]);
+
 	data[37] = (unk6<<4)
 	          |(KEY&0xF);
 	data[38] = unk7;
@@ -197,10 +201,11 @@ void InstrumentConverter::Set(const BYTE *data)
 	reg22 = data[j++]; // LFO
 	reg28 = data[j++]; // Key On
 	reg27 = data[j++]; // CSM
+
 	for (int i=0; i<4; ++i)
 	{
-		CH3_F[i] = data[j++];
-		CH3_F[i] |= (data[j++]<<8);
+		CH3_F[i] = GetWordBE(data + j);
+		j += 2;
 	}
 }
 
@@ -224,8 +229,8 @@ void InstrumentConverter::Write(BYTE *data) const
 	data[j++] = reg27; // CSM
 	for (int i=0; i<4; ++i)
 	{
-		data[j++] = CH3_F[i];
-		data[j++] = CH3_F[i]>>8;
+		SetWordBE(data + j, CH3_F[i]);
+		j += 2;
 	}
 }
 
@@ -246,11 +251,12 @@ void InstrumentConverter::ImportGems(const BYTE *data)
 		op[i].reg80 = p[5]; // SL/RR
 		op[i].reg90 = 0;    // SSG
 	}
-	for (int i=0; i<4; ++i)
-	{
-		CH3_F[i] = (data[29+i*2]<<8);
-		CH3_F[i] |= data[30+i*2];
-	}
+
+	CH3_F[3] = GetWordBE(data + 29);
+	CH3_F[2] = GetWordBE(data + 31);
+	CH3_F[0] = GetWordBE(data + 33);
+	CH3_F[1] = GetWordBE(data + 35);
+
 	reg28 = data[37]<<4; // Key On
 }
 
@@ -271,11 +277,12 @@ void InstrumentConverter::ExportGems(BYTE *data) const
 		p[4] = op[i].reg70; // SR
 		p[5] = op[i].reg80; // SL/RR
 	}
-	for (int i=0; i<4; ++i)
-	{
-		data[29+i*2] = CH3_F[i]>>8;
-		data[30+i*2] = CH3_F[i];
-	}
+
+	SetWordBE(data + 29, CH3_F[3]);
+	SetWordBE(data + 31, CH3_F[2]);
+	SetWordBE(data + 33, CH3_F[0]);
+	SetWordBE(data + 35, CH3_F[1]);
+
 	data[37] = reg28>>4; // Key On
 	data[38] = 0; // Unknown
 }
@@ -312,13 +319,14 @@ void InstrumentConverter::ImportTYI(const BYTE *data)
 {
 	for (int i=0; i<4; ++i)
 	{
-		op[i].reg30 = data[ 0+i]; // DT/MUL
-		op[i].reg40 = data[ 4+i]; // TL
-		op[i].reg50 = data[ 8+i]; // RS/AR
-		op[i].reg60 = data[12+i]; // AM/DR
-		op[i].reg70 = data[16+i]; // SR
-		op[i].reg80 = data[20+i]; // SL/RR
-		op[i].reg90 = data[24+i]; // SSG
+		int j = ((i<<1)|(i>>1))&3;
+		op[j].reg30 = data[ 0+i]; // DT/MUL
+		op[j].reg40 = data[ 4+i]; // TL
+		op[j].reg50 = data[ 8+i]; // RS/AR
+		op[j].reg60 = data[12+i]; // AM/DR
+		op[j].reg70 = data[16+i]; // SR
+		op[j].reg80 = data[20+i]; // SL/RR
+		op[j].reg90 = data[24+i]; // SSG
 	}
 	regB0 = data[28]; // FB/ALG
 	regB4 = data[29]; // FMS/AMS
@@ -335,13 +343,14 @@ void InstrumentConverter::ExportTYI(BYTE *data) const
 	int j = 0;
 	for (int i=0; i<4; ++i)
 	{
-		data[ 0+i] = op[i].reg30; // DT/MUL
-		data[ 4+i] = TL(this, i); // TL
-		data[ 8+i] = op[i].reg50; // RS/AR
-		data[12+i] = op[i].reg60; // AM/DR
-		data[16+i] = op[i].reg70; // SR
-		data[20+i] = op[i].reg80; // SL/RR
-		data[24+i] = op[i].reg90; // SSG
+		int j = ((i<<1)|(i>>1))&3;
+		data[ 0+i] = op[j].reg30; // DT/MUL
+		data[ 4+i] = TL(this, j); // TL
+		data[ 8+i] = op[j].reg50; // RS/AR
+		data[12+i] = op[j].reg60; // AM/DR
+		data[16+i] = op[j].reg70; // SR
+		data[20+i] = op[j].reg80; // SL/RR
+		data[24+i] = op[j].reg90; // SSG
 	}
 	data[28] = regB0; // FB/ALG
 	data[29] = regB4; // FMS/AMS
@@ -441,10 +450,10 @@ void InstrumentConverter::ImportY12(const BYTE *data)
 		op[j].reg30 = p[0]; // DT/MUL
 		op[j].reg40 = p[1]; // TL
 		op[j].reg50 = p[2]; // RS/AR
-		op[j].reg60 = p[3]; // AM/DR - AM is not used?
+		op[j].reg60 = p[3]; // AM/DR
 		op[j].reg70 = p[4]; // SDR
 		op[j].reg80 = p[5]; // RR/SL
-		op[j].reg90 = 0;    // SSG
+		op[j].reg90 = p[6]; // SSG
 	}
 	regB0 = (data[40]&7)|((data[41]&7)<<3); // FB/ALG
 	regB4 = 0xC0; // L/R/FMS/AMS
@@ -464,11 +473,12 @@ void InstrumentConverter::ExportY12(BYTE *data) const
 		p[0] = op[j].reg30; // DT/MUL
 		p[1] = TL(this, j); // TL
 		p[2] = op[j].reg50; // RS/AR
-		p[3] = op[j].reg60; // AM/DR - AM is not used?
+		p[3] = op[j].reg60; // AM/DR
 		p[4] = op[j].reg70; // SDR
 		p[5] = op[j].reg80; // RR/SL
-		for (int k=0; k<10; ++k)
-			p[6+k] = 0; // Reserved
+		p[6] = op[j].reg90; // SSG
+		for (int k=0; k<9; ++k)
+			p[7+k] = 0; // Reserved
 	}
 	data[0x40] = regB0&7; // ALG
 	data[0x41] = (regB0>>3)&7; // FB
@@ -504,7 +514,6 @@ void InstrumentConverter::ImportVGI(const BYTE *data)
 	for (int i=0; i<4; ++i)
 		CH3_F[i] = 0;
 }
-#include <cstdio>
 
 void InstrumentConverter::ExportVGI(BYTE *data) const
 {
