@@ -18,6 +18,7 @@ static int cmd_size[] = {
 -1, // 0x65
 0,  // 0x66
 0,0, // 0x67, 0x68 (variable)
+-1,-1,-1,-1,-1,-1,-1, // 0x69-0x6F
 0,0,0,0,0,0,0,0, // 0x70-0x77
 0,0,0,0,0,0,0,0, // 0x78-0x7F
 0,0,0,0,0,0,0,0, // 0x80-0x87
@@ -54,6 +55,21 @@ vgmParser::~vgmParser()
 		free(dataBlocks[i]);
 	if (dataBlocks)
 		free(dataBlocks);
+}
+
+int vgmParser::getVersion() const
+{
+	return version;
+}
+
+int vgmParser::clockSN76489() const
+{
+	return psgClock;
+}
+
+int vgmParser::clockYM2612() const
+{
+	return ymClock;
 }
 
 int vgmParser::getDataBlockCount() const
@@ -154,20 +170,20 @@ int vgmParser::parse(FILE *f)
 		if (cmd<0x30)
 			return 2; // invalid command
 
-		int cmdsize = cmd_size[cmd];
+		int cmdsize = cmd_size[cmd-0x30];
 		if (cmdsize<0)
 			return 2; // invalid command
 
 		if (cmd == 0x67) // data block
 		{
-			r = fread(buff,1,5,f);
-			if (r != 5)
+			r = fread(buff,1,6,f);
+			if (r != 6)
 				return 1; // unexpected end
 			if (buff[0] != 0x66)
 				return 2; // invalid command
 
-			int size = GetLongLE(buff+1);
-			unsigned char *data = createDataBlock(buff[0], size);
+			int size = GetLongLE(buff+2);
+			unsigned char *data = createDataBlock(buff[1], size);
 			fread(data,1,size,f);
 			continue;
 		}
@@ -180,8 +196,11 @@ int vgmParser::parse(FILE *f)
 			if (buff[0] != 0x66)
 				return 2; // invalid command
 
-			if (process(this, custom, cmd, buff+1))
-				return 0;
+			if (process)
+			{
+				if (process(this, custom, cmd, buff+1))
+					return 0;
+			}
 			continue;
 		}
 
@@ -189,8 +208,11 @@ int vgmParser::parse(FILE *f)
 		if (r != cmdsize)
 			return 1; // unexpected end
 
-		if (process(this, custom, cmd, buff))
-			return 0;
+		if (process)
+		{
+			if (process(this, custom, cmd, buff))
+				return 0;
+		}
 
 		if (cmd == 0x66) // End of sound
 			return 0;

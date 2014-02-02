@@ -14,7 +14,7 @@ void usage()
 "        tyi  - Tiido's instrument file\n"
 "        tfi  - TFM Music Maker instrument file\n"
 "        eif  - ECHO instrument file\n"
-"        y12  - GensKMOD Y2612 channel dump\n"
+"        y12  - GensKMOD YM2612 channel dump\n"
 "        vgi  - VGM Music Maker instrument file\n" 
 "        dmp  - DefleMask instrument file\n" 
 "        dmp0 - DefleMask instrument file version 0\n" 
