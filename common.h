@@ -15,6 +15,14 @@ void SetWordBE(BYTE *data, int value);
 int GetTriple(const BYTE *data);
 void SetTriple(BYTE *data, int value);
 
+// Get Long Little-Endian 01 23 45 67 = 0x67452301
+int GetLongLE(const BYTE *data);
+void SetLongLE(BYTE *data, int value);
+
+// Get Long Big-Endian 01 23 45 67 = 0x01234567
+int GetLongBE(const BYTE *data);
+void SetLongBE(BYTE *data, int value);
+
 // Scan number
 // input: spaces + number in format:
 // 0123 for decimal

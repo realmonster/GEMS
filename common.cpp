@@ -10,7 +10,7 @@ int GetWordLE(const BYTE *data)
 void SetWordLE(BYTE *data, int value)
 {
 	data[0] = value;
-	data[1]	= value >> 8;
+	data[1] = value >> 8;
 }
 
 // Get Word Big-Endian 01 23 = 0x123
@@ -23,21 +23,59 @@ int GetWordBE(const BYTE *data)
 void SetWordBE(BYTE *data, int value)
 {
 	data[1] = value;
-	data[0]	= value >> 8;
+	data[0] = value >> 8;
 }
 
 // Get 3 bytes Little-Endian 01 23 45 = 0x452301
 int GetTriple(const BYTE *data)
 {
-	return 	data[0]|(data[1]<<8)|(data[2]<<16);
+	return data[0]|(data[1]<<8)|(data[2]<<16);
 }
 
 // Set 3 bytes Little-Endian 01 23 45 = 0x452301
 void SetTriple(BYTE *data, int value)
 {
 	data[0] = value;
-	data[1]	= value >> 8;
-	data[2]	= value >> 16;
+	data[1] = value >> 8;
+	data[2] = value >> 16;
+}
+
+// Get Long Little-Endian 01 23 45 67 = 0x67452301
+int GetLongLE(const BYTE *data)
+{
+	return
+	  data[0]
+	|(data[1]<<8)
+	|(data[2]<<16)
+	|(data[3]<<24);
+}
+
+// Set Long Little-Endian 01 23 45 67 = 0x67452301
+void SetLongLE(BYTE *data, int value)
+{
+	data[0] = value;
+	data[1] = value >> 8;
+	data[2] = value >> 16;
+	data[3] = value >> 24;
+}
+
+// Get Long Big-Endian 01 23 45 67 = 0x1234567
+int GetLongBE(const BYTE *data)
+{
+	return
+	  data[3]
+	|(data[2]<<8)
+	|(data[1]<<16)
+	|(data[0]<<24);
+}
+
+// Set Long Big-Endian 01 23 45 67 = 0x1234567
+void SetLongBE(BYTE *data, int value)
+{
+	data[3] = value;
+	data[2] = value >> 8;
+	data[1] = value >> 16;
+	data[0] = value >> 24;
 }
 
 // Scan number
