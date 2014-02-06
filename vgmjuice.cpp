@@ -1,5 +1,4 @@
 #include <cstdio>
-#include <ctype.h>
 #include <direct.h>
 #include "instruments.h"
 #include "vgm_parser.h"
@@ -143,7 +142,7 @@ int getNote(int freq)
 	}
 	if (o>=0)
 	{
-		// log(f)-(note[n]) > log(note[n+1])-log(f)
+		// log(f)-log(note[n]) > log(note[n+1])-log(f)
 		if (((long long)f)*f > (long long)(fmtbl[n+1]<<o)*(fmtbl[n]<<o))
 			++n;
 	}
@@ -363,47 +362,8 @@ bool process(vgmParser *parser, void *, int cmd, const unsigned char *args)
 	return false;
 }
 
-char *pext = 0;
+const char *pext = 0;
 int instrument_format = 0;
-
-char *formats[] = {
-	"gems",
-	"tyi",
-	"tfi",
-	"eif",
-	"y12",
-	"vgi",
-	"dmp",
-	"dmp0",
-	"smps",
-};
-
-int format_size[] = {
-	39,  // GEMS
-	32,  // TYI
-	42,  // TFI
-	29,  // EIF
-	128, // Y12
-	43,  // VGI
-	51,  // DMP
-	49,  // DMP v0
-	25,  // SMPS
-};
-
-int getformat(const char *name)
-{
-	for (int i=0; i<sizeof(format_size)/sizeof(format_size[0]); ++i)
-	{
-		bool same = true;
-		int j;
-		for (j=0; name[j] && formats[i][j]; ++j)
-			if (tolower(name[j]) != tolower(formats[i][j]))
-				same = false;
-		if (same && !name[j] && !(formats[i][j]))
-			return i;
-	}
-	return -1;
-}
 
 int main(int argc, char **args)
 {
@@ -418,7 +378,7 @@ int main(int argc, char **args)
 		{
 			if (i+1<argc)
 			{
-				instrument_format = getformat(args[i+1]);
+				instrument_format = InstrumentConverter::FormatByName(args[i+1]);
 				if (instrument_format < 0)
 				{
 					printf("Error: unknown instrument type \"%s\"\n\n",args[i+1]);
@@ -455,7 +415,7 @@ int main(int argc, char **args)
 	}
 	
 	if (!pext)
-		pext = formats[instrument_format];
+		pext = InstrumentConverter::FormatName(instrument_format);
 
 	FILE *vgm = fopen(args[1],"rb");
 	if (!vgm)
@@ -641,37 +601,9 @@ int main(int argc, char **args)
 			printf("Error: Can't create file \"%s\"\n",buff);
 			continue;
 		}
-		switch(instrument_format)
-		{
-			case 0: // GEMS
-				ic.ExportGems(buff);
-				break;
-			case 1: // TYI
-				ic.ExportTYI(buff);
-				break;
-			case 2: // TFI
-				ic.ExportTFI(buff);
-				break;
-			case 3: // EIF
-				ic.ExportEIF(buff);
-				break;
-			case 4: // Y12
-				ic.ExportY12(buff);
-				break;
-			case 5: // VGI
-				ic.ExportVGI(buff);
-				break;
-			case 6: // DMP
-				ic.ExportDMP(buff);
-				break;
-			case 7: // DMPv0
-				ic.ExportDMPv0(buff);
-				break;
-			case 8: // SMPS
-				ic.ExportSMPS(buff);
-				break;
-		}
-		fwrite(buff,1,format_size[instrument_format],file);
+		ic.Export(instrument_format,buff);
+		int size = InstrumentConverter::FormatSize(instrument_format);
+		fwrite(buff,1,size,file);
 		fclose(file);
 	}
 

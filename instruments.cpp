@@ -1,5 +1,6 @@
 #include "common.h"
 #include "instruments.h"
+#include <ctype.h>
 
 BYTE FM_ALG_Carriers[]=
 {
@@ -662,4 +663,130 @@ void InstrumentConverter::ExportSMPS(BYTE *data) const
 		data[17+i] = op[i].reg80; // SL/RR
 		data[21+i] = TL(this, i); // TL
 	}
+}
+
+int InstrumentConverter::Import(int format, const BYTE *data)
+{	
+	switch (format)
+	{
+		case GEMS:
+			ImportGems(data);
+			break;
+		case TYI:
+			ImportTYI(data);
+			break;
+		case TFI:
+			ImportTFI(data);
+			break;
+		case EIF:
+			ImportEIF(data);
+			break;
+		case Y12:
+			ImportY12(data);
+			break;
+		case VGI:
+			ImportVGI(data);
+			break;
+		case DMP:
+		case DMP0:
+			return ImportDMP(data);
+		case SMPS:
+			ImportSMPS(data);
+			break;
+		default:
+			return 1;
+	}
+	return 0;
+}
+
+int InstrumentConverter::Export(int format, BYTE *data) const
+{	
+	switch (format)
+	{
+		case GEMS:
+			ExportGems(data);
+			break;
+		case TYI:
+			ExportTYI(data);
+			break;
+		case TFI:
+			ExportTFI(data);
+			break;
+		case EIF:
+			ExportEIF(data);
+			break;
+		case Y12:
+			ExportY12(data);
+			break;
+		case VGI:
+			ExportVGI(data);
+			break;
+		case DMP:
+			ExportDMP(data);
+			break;
+		case DMP0:
+			ExportDMPv0(data);
+			break;
+		case SMPS:
+			ExportSMPS(data);
+			break;
+		default:
+			return 1;
+	}
+	return 0;
+}
+
+static int format_size[] = {
+	39,  // GEMS
+	32,  // TYI
+	42,  // TFI
+	29,  // EIF
+	128, // Y12
+	43,  // VGI
+	51,  // DMP
+	49,  // DMP v0
+	25,  // SMPS
+};
+
+int InstrumentConverter::FormatSize(int format)
+{
+	if (format >= sizeof(format_size)/sizeof(format_size[0])
+	 || format < 0)
+		return 0;
+	return format_size[format];
+}
+
+static char *formats[] = {
+	"gems",
+	"tyi",
+	"tfi",
+	"eif",
+	"y12",
+	"vgi",
+	"dmp",
+	"dmp0",
+	"smps",
+};
+
+const char* InstrumentConverter::FormatName(int format)
+{
+	if (format >= sizeof(format_size)/sizeof(format_size[0])
+	 || format < 0)
+		return 0;
+	return formats[format];
+}
+
+int InstrumentConverter::FormatByName(const char *name)
+{
+	for (int i=0; i<sizeof(format_size)/sizeof(format_size[0]); ++i)
+	{
+		bool same = true;
+		int j;
+		for (j=0; name[j] && formats[i][j]; ++j)
+			if (tolower(name[j]) != tolower(formats[i][j]))
+				same = false;
+		if (same && !name[j] && !(formats[i][j]))
+			return i;
+	}
+	return -1; 
 }

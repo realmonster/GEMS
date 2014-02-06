@@ -125,6 +125,18 @@ struct InstrumentConverter
 	void Set(const BYTE *data);
 	void Write(BYTE *data) const;
 
+	enum
+	{
+		GEMS,
+		TYI,
+		TFI,
+		EIF,
+		Y12,
+		VGI,
+		DMP,
+		DMP0,
+		SMPS,
+	};
 	// size 39
 	void ImportGems(const BYTE *data);
 	void ExportGems(BYTE *data) const;
@@ -157,6 +169,15 @@ struct InstrumentConverter
 	// size 25
 	void ImportSMPS(const BYTE *data);
 	void ExportSMPS(BYTE *data) const;
+
+	// Import/Export by format id
+	// returns != NULL if does not support
+	int Import(int format, const BYTE *data);
+	int Export(int format, BYTE *data) const;
+	
+	static int FormatSize(int format);
+	static const char* FormatName(int format);
+	static int FormatByName(const char* name);
 };
 
 #endif

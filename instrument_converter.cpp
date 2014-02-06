@@ -1,5 +1,4 @@
 #include <cstdio>
-#include <ctype.h>
 #include "instruments.h"
 
 void usage()
@@ -27,45 +26,6 @@ void usage()
 
 unsigned char data[200];
 
-char *formats[] = {
-	"gems",
-	"tyi",
-	"tfi",
-	"eif",
-	"y12",
-	"vgi",
-	"dmp",
-	"dmp0",
-	"smps",
-};
-
-int format_size[] = {
-	39,  // GEMS
-	32,  // TYI
-	42,  // TFI
-	29,  // EIF
-	128, // Y12
-	43,  // VGI
-	51,  // DMP
-	49,  // DMP v0
-	25,  // SMPS
-};
-
-int getformat(const char *name)
-{
-	for (int i=0; i<sizeof(format_size)/sizeof(format_size[0]); ++i)
-	{
-		bool same = true;
-		int j;
-		for (j=0; name[j] && formats[i][j]; ++j)
-			if (tolower(name[j]) != tolower(formats[i][j]))
-				same = false;
-		if (same && !name[j] && !(formats[i][j]))
-			return i;
-	}
-	return -1;
-}
-
 int main(int argc, char **args)
 {
 	if (argc != 5)
@@ -74,8 +34,8 @@ int main(int argc, char **args)
 		return 0;
 	}
 
-	int input_format = getformat(args[1]);
-	int output_format = getformat(args[3]);
+	int input_format = InstrumentConverter::FormatByName(args[1]);
+	int output_format = InstrumentConverter::FormatByName(args[3]);
 	if (input_format == -1)
 	{
 		printf("Error: Unknown format: %s\n\n",args[1]);
@@ -97,88 +57,31 @@ int main(int argc, char **args)
 		usage();
 		return 3;
 	}
-	int in_len = fread(data,1,200,f);
+	int in_size = InstrumentConverter::FormatSize(input_format);
+	int in_len = fread(data,1,in_size,f);
 	fclose(f);
 
-	if (in_len < format_size[input_format])
+	if (in_len < in_size)
 	{
-		if (!(input_format == 6 && in_len == 49)) // avoid DMP v < 5 warning
+		if (!(input_format == InstrumentConverter::DMP && in_len == 49)) // avoid DMP v < 5 warning
 			printf("Warrning: input file size %d < %d size of input format type\n",
-				in_len, format_size[input_format]);
+				in_len, in_size);
 	}
 
 	InstrumentConverter ic;
-	switch(input_format)
+	int ret = ic.Import(input_format, data);
+	if (ret == 1)
 	{
-		case 0: // GEMS
-			ic.ImportGems(data);
-			break;
-		case 1: // TYI
-			ic.ImportTYI(data);
-			break;
-		case 2: // TFI
-			ic.ImportTFI(data);
-			break;
-		case 3: // EIF
-			ic.ImportEIF(data);
-			break;
-		case 4: // Y12
-			ic.ImportY12(data);
-			break;
-		case 5: // VGI
-			ic.ImportVGI(data);
-			break;
-		case 6: // DMP
-		case 7: // DMPv0
-		{
-			int ret = ic.ImportDMP(data);
-			if (ret == 1)
-			{
-				printf("Error: this DMP version is not supported\n");
-				return 6;
-			}
-			if (ret == 2)
-			{
-				printf("Error: DMP with STD instrument is not supported\n");
-				return 7;
-			}
-		}
-			break;
-		case 8: // SMPS
-			ic.ImportSMPS(data);
-			break;
+		printf("Error: this DMP version is not supported\n");
+		return 6;
+	}
+	if (ret == 2)
+	{
+		printf("Error: DMP with STD instrument is not supported\n");
+		return 7;
 	}
 
-	switch(output_format)
-	{
-		case 0: // GEMS
-			ic.ExportGems(data);
-			break;
-		case 1: // TYI
-			ic.ExportTYI(data);
-			break;
-		case 2: // TFI
-			ic.ExportTFI(data);
-			break;
-		case 3: // EIF
-			ic.ExportEIF(data);
-			break;
-		case 4: // Y12
-			ic.ExportY12(data);
-			break;
-		case 5: // VGI
-			ic.ExportVGI(data);
-			break;
-		case 6: // DMP
-			ic.ExportDMP(data);
-			break;
-		case 7: // DMPv0
-			ic.ExportDMPv0(data);
-			break;
-		case 8: // SMPS
-			ic.ExportSMPS(data);
-			break;
-	}
+	ic.Export(output_format, data);
 
 	f = fopen(args[4],"wb");
 	if (!f)
@@ -187,10 +90,11 @@ int main(int argc, char **args)
 		usage();
 		return 4;
 	}
-	int out_len = fwrite(data,1,format_size[output_format],f);
+	int out_size = InstrumentConverter::FormatSize(output_format);
+	int out_len = fwrite(data,1,out_size,f);
 	fclose(f);
 
-	if (out_len != format_size[output_format])
+	if (out_len != out_size)
 	{
 		printf("Error: Can't write file \"%s\"\n\n",args[4]);
 		usage();
