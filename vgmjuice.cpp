@@ -45,7 +45,7 @@ struct note
 	note() {}
 	note(int _time, int _on, int _freq, int _patch) : time(_time), on(_on), freq(_freq), patch(_patch) {}
 };
-std::vector<note> tracks[6];
+std::vector<note> tracks[10];
 int lastInstrument[6];
 
 std::vector<InstrumentConverter> instruments;
@@ -188,7 +188,7 @@ void ym2612write(int port, int reg, int val)
 			printf("Unexpected YM2612 channel change during key on: %02X %02X\n",reg,val);*/
 	}
 
-	switch (reg&0xF0)
+	switch(reg&0xF0)
 	{
 		case 0x20:
 			switch(reg)
@@ -215,7 +215,7 @@ void ym2612write(int port, int reg, int val)
 					{
 						printf("Unexpected behavior: key on update %02X %02X\n",reg,val);
 					}
-					if ((channel[ch].reg28==0) != ((val&0xF0)==0))
+					if ((channel[ch].reg28==0) != ((val&0xF0) == 0))
 					{
 						// Key On was changed
 						channel[ch].reg28 = (val&0xF0);
@@ -300,9 +300,89 @@ void ym2612write(int port, int reg, int val)
 	}
 }
 
+double ftbl[13]=
+{
+261.63,
+277.18,
+293.66,
+311.13,
+329.63,
+349.23,
+369.99,
+392.00,
+415.30,
+440.00,
+466.16,
+493.88,
+523.25
+};
+bool printtt = true;
+
+int getNotePSG(int freq)
+{
+	int oct = -2, note = 9; // A2
+	int min = 100000;
+	int minnote = -1;
+	int found = 0;
+	for (int i=0; i<64; ++i)
+	{
+		unsigned short f=floor(3579545.0/(2*16*ftbl[note]*pow(2.0,oct))+0.5);
+		if (abs(f - freq) < min)
+		{
+			min = abs(f - freq);
+			found = f;
+			minnote = (oct+4)*12+note;
+		}
+		++note;
+		if (note == 12)
+		{
+			note = 0;
+			++oct;
+		}
+	}
+	return minnote;
+}
+
+int LatchedRegister = 0;
+int PSGFreq[4]; // Frequency
+int PSGVol[4]; // Volume
+bool PSGOn[4] = {false,false,false,false}; // Last On
+int PSGLastNote[4];
+
 void sn76489write(int value)
 {
-	// TODO
+	int reg;
+	if (value&0x80)
+		LatchedRegister = reg = (value>>4)&7;
+	else
+		reg = LatchedRegister;
+
+	int ch = reg>>1; // channel
+	if (reg < 8)
+	{
+		if (reg&1) // volume: 1,3,5,7
+		{
+			PSGVol[ch] = value&0xF;
+			if (((value&0xF) != 0xF) != PSGOn[ch])
+			{
+				PSGOn[ch] = ((value&0xF) != 0xF);
+				tracks[ch+6].push_back(note(time,PSGOn[ch]?1:0,PSGFreq[ch],0));
+			}
+		}
+		else // frequency: 0,2,4,6
+		{
+			if ((value&0x80) || ch == 6) // 1cctdddd or Noise
+				PSGFreq[ch] = (PSGFreq[ch]&0x3f0)|(value&0xf);
+			else  // 0?dddddd
+			{
+				PSGFreq[ch] = (PSGFreq[ch]&0x00f)|((value&0x3f)<<4);
+				if (PSGOn[ch])
+					tracks[ch+6].push_back(note(time,PSGOn[ch]?1:0,PSGFreq[ch],0));
+			}
+		}
+	}
+	else
+		printf("SN76489 %02\n",value);
 }
 
 bool process(vgmParser *parser, void *, int cmd, const unsigned char *args)
@@ -332,8 +412,8 @@ bool process(vgmParser *parser, void *, int cmd, const unsigned char *args)
 		break;
 
 	case 0x64: // Wait Override
-		if (args[0]==0x62
-		 || args[0]==0x63)
+		if (args[0] == 0x62
+		 || args[0] == 0x63)
 			waitTime[args[0]-0x62] = GetWordLE(args+1);
 		break;
 
@@ -345,11 +425,11 @@ bool process(vgmParser *parser, void *, int cmd, const unsigned char *args)
 		break;
 
 	default:
-		if ((cmd&0xF0)==0x70) // Wait n+1
+		if ((cmd&0xF0) == 0x70) // Wait n+1
 		{
 			time += (cmd&0xF)+1;
 		}
-		else if ((cmd&0xF0)==0x80) // YM2612 dac port 0
+		else if ((cmd&0xF0) == 0x80) // YM2612 dac port 0
 		{
 			time += (cmd&0xF);
 			++dacPos;
@@ -468,7 +548,7 @@ int main(int argc, char **args)
 	buff[7]=6;
 	buff[8]=buff[10]=0;
 	buff[9]=1; // format multiple sync tracks
-	buff[11]=1+6; // tracks count
+	buff[11]=1+6+4; // tracks count
 	int ppq = 44100/2; // (Pulses per quater)
 	buff[12]=ppq>>8;
 	buff[13]=ppq;
@@ -500,6 +580,7 @@ int main(int argc, char **args)
 	fwrite(buff,1,8,file);
 	fwrite(&track[0],1,track.size(),file);
 
+	// YM2612 part
 	for (int i=0; i<6; ++i)
 	{
 		int lastPitch = 0x2000;
@@ -509,7 +590,7 @@ int main(int argc, char **args)
 
 		track.clear();
 		// MIDI init
-		sprintf((char*)buff,"Channel %02X",i);
+		sprintf((char*)buff,"YM2612 %02X",i);
 		track_name(track,(char*)buff);
 		track_instrument_name(track,(char*)buff);
 		track_pitch_sens(track, i, 12);
@@ -587,6 +668,78 @@ int main(int argc, char **args)
 		fwrite(&track[0],1,track.size(),file);
 	}
 
+	// PSG Part
+	for (int i=6; i<10; ++i)
+	{
+		int lastPitch = 0x2000;
+		int lastNote = 0;
+		int lastTime = 0;
+		int lastOn = 0;
+
+		track.clear();
+		// MIDI init
+		sprintf((char*)buff,"PSG %02X",i-6);
+		track_name(track,(char*)buff);
+		track_instrument_name(track,(char*)buff);
+		track_pitch_sens(track, i, 12);
+
+		for (int j=0; j<tracks[i].size(); ++j)
+		{
+			note &n = tracks[i][j];
+			if (n.on)
+			{
+				if (!lastOn)
+				{
+					track_delta(track, n.time-lastTime);
+					lastNote = getNotePSG(n.freq);
+
+					track.push_back(0x90|(i+4)); // key on
+					track.push_back(lastNote);
+					track.push_back(0x7F); // volume
+					lastTime = n.time;
+					lastOn = 1;
+				}
+				else
+				{
+					int nn = getNotePSG(n.freq);
+					if (nn != lastNote)
+					{
+						track_delta(track, n.time-lastTime);
+						track.push_back(0x80|(i+4)); // key off
+						track.push_back(lastNote);
+						track.push_back(0x7F);
+
+						track_delta(track, 0);
+						track.push_back(0x90|(i+4)); // key on
+						track.push_back(nn);
+						track.push_back(0x7F);
+						lastNote = nn;
+						lastTime = n.time;
+					}
+				}
+			}
+			else
+			{
+				track_delta(track, n.time-lastTime);
+				track.push_back(0x80|(i+4)); // key off
+				track.push_back(lastNote);
+				track.push_back(0x7F); // volume
+				lastTime = n.time;
+				lastOn = 0;
+			}
+		}
+		track_end(track,0);
+
+		// Write MIDI track.
+		strcpy((char*)buff,"MTrk");
+		buff[4] = track.size()>>24;
+		buff[5] = track.size()>>16;
+		buff[6] = track.size()>>8;
+		buff[7] = track.size();
+		fwrite(buff,1,8,file);
+		fwrite(&track[0],1,track.size(),file);
+	}
+
 	fclose(file);
 
 	for (int i=0; i<instruments.size(); ++i)
@@ -604,6 +757,24 @@ int main(int argc, char **args)
 		ic.Export(instrument_format,buff);
 		int size = InstrumentConverter::FormatSize(instrument_format);
 		fwrite(buff,1,size,file);
+		fclose(file);
+	}
+	
+	for (int i=0; i<parser.getDataBlockCount(); ++i)
+	{
+		int type = parser.getDataBlockType(i);
+		sprintf((char*)buff,"%s\\datablock_%02d(%02X).bin",args[2],i,type);
+
+		file = fopen((char*)buff,"wb");
+		if (!file)
+		{
+			printf("Error: Can't create file \"%s\"\n",buff);
+			continue;
+		}
+		int size = parser.getDataBlockSize(i);
+		int r = fwrite(parser.getDataBlock(i),1,size,file);
+		if (r != size)
+			printf("Error: Can't write file \"%s\"\n",buff);
 		fclose(file);
 	}
 
