@@ -1,3 +1,20 @@
+/*
+    This file is part of GEMS Toolkit.
+
+    GEMS Toolkit is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    GEMS Toolkit is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with GEMS Toolkit.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <cstdio>
 #include <direct.h>
 #include "instruments.h"
@@ -47,6 +64,12 @@ struct note
 };
 std::vector<note> tracks[10];
 int lastInstrument[6];
+
+char *outputDirectory;
+std::vector<unsigned char> sample;
+int samplesCount = 0; 
+int sampleStart = 0;
+int sampleEnd = 0;
 
 std::vector<InstrumentConverter> instruments;
 
@@ -233,8 +256,44 @@ void ym2612write(int port, int reg, int val)
 					// Key On
 					channel[ch].reg28 = (val&0xF0);
 					break;
+				case 0x2A: // DAC sample
+					sample.push_back(val);
+					if (sampleStart == -1)
+						sampleStart = time;
+					sampleEnd = time;
+					break;
 				case 0x2B: // DAC On/Off
-					dacOn = (val&0x80)?true:false;
+					{
+					bool newOn = (val&0x80)?true:false;
+					if (dacOn != newOn)
+					{
+						if (newOn)
+						{
+							sample.clear();
+							sampleStart = -1;
+						}
+						else
+						{
+							char fname[200];
+							unsigned char wavheader[] = "RIFF....WAVEfmt \x10\0\0\0\x01\0\x01\0........\x01\0\x08\0data....";
+							double samplerate = 44100.0*sample.size()/double(sampleEnd-sampleStart);
+							int sr = samplerate;
+							
+							SetLongLE(wavheader+4,sample.size()+0x24);
+							SetLongLE(wavheader+0x28,sample.size());
+							SetLongLE(wavheader+0x18,sr);
+							SetLongLE(wavheader+0x1C,sr);
+							
+							sprintf(fname,"%s\\sample_%03d.wav",outputDirectory,samplesCount);
+							FILE *f = fopen(fname,"wb");
+							fwrite(wavheader,1,0x2C,f);
+							fwrite(&sample[0],1,sample.size(),f);
+							fclose(f);
+							++samplesCount;
+						}
+					}
+					dacOn = newOn;
+					}
 					break;
 			}
 			break;
@@ -431,6 +490,13 @@ bool process(vgmParser *parser, void *, int cmd, const unsigned char *args)
 		}
 		else if ((cmd&0xF0) == 0x80) // YM2612 dac port 0
 		{
+			int blocks_count = parser->getDataBlockCount();
+			const unsigned char *block = 0;
+			for (int i=0; i<blocks_count; ++i)
+				if (parser->getDataBlockType(i) == 0) // YM2612 PCM data
+					block = parser->getDataBlock(i);
+			if (block)
+				ym2612write(0,0x2A,block[dacPos]);
 			time += (cmd&0xF);
 			++dacPos;
 		}
@@ -506,6 +572,7 @@ int main(int argc, char **args)
 	}
 
 	unsigned char buff[200];
+	outputDirectory = args[2];
 
 	vgmParser parser;
 	parser.process = process;
