@@ -258,7 +258,21 @@ struct Parser
 	vector<int> start, end, type; // token start, end, type
 	int current; // current token
 	int origin;  // origin in code
-	
+
+	// helper, to output parser state
+	void printstate() const
+	{
+		printf("%s(%d) State:", path.c_str(), line_n);
+		for (int i=0; i<start.size(); ++i)
+		{
+			printf("\"");
+			for (int j=start[i]; j<end[i]; ++j)
+				printf("%c", line[j]);
+			printf("\"=%s ", token_names[type[i]]);
+		}
+		printf("\n");
+	}
+
 	// set path to current file
 	void setPath(string _path)
 	{
@@ -399,12 +413,14 @@ int gems_encode(const Parser &parser, vector<BYTE> &code, int pass, int &op)
 	if (op >= 28 && op <= 31)
 	{
 		int len = 1;
+		int strings = 0;
 		for (int i=0; i<parser.getLeft(); ++i)
 			if (parser.getType(i) == TOKEN_DEL && parser.cmp(i,",") == 0)
 				++len;
 			else if (parser.getType(i) == TOKEN_STR)
 			{
 				// if string, find string len
+				++strings;
 				int start = parser.getStart(i);
 				int end = parser.getEnd(i);
 				if (parser.line[i] == '\''
@@ -417,6 +433,8 @@ int gems_encode(const Parser &parser, vector<BYTE> &code, int pass, int &op)
 				// add string len sub one for assuming one element before
 				len += end - start - 1;
 			}
+
+		len -= strings;
 		if (op == 29)
 			len *= 2;
 		if (op == 30)
@@ -433,7 +451,7 @@ int gems_encode(const Parser &parser, vector<BYTE> &code, int pass, int &op)
 	// if it is pass just for get size
 	if (pass == 0)
 		return 0; // return success
-	
+
 	// dc.
 	if (op >= 28 && op <= 31)
 	{
@@ -447,14 +465,18 @@ int gems_encode(const Parser &parser, vector<BYTE> &code, int pass, int &op)
 				return 2;
 			}
 			int del = -1;
-			for (int i=cur; i<parser.getLeft(); ++i)
-				if (parser.getType(i) == TOKEN_DEL
-				 && parser.cmp(i, ",") == 0)
-					del = i;
-			int end = del;
-			if (end == -1)
-				end = parser.getLeft();
 
+			if (parser.getType(cur) == TOKEN_STR)
+			{
+				del = cur + 1;
+				if (parser.getLeft() > del
+				 &&(parser.getType(del) != TOKEN_DEL
+				 || parser.cmp(del, ",") != 0))
+				{
+					parser.printError(parser.getEnd(cur), "\",\" expected");
+					return 6;
+				}
+			}
 			int s_start = parser.getStart(cur);
 			int s_end = parser.getEnd(cur);
 			for (int j=s_start; j<s_end; ++j)
@@ -473,13 +495,25 @@ int gems_encode(const Parser &parser, vector<BYTE> &code, int pass, int &op)
 				else
 				{
 					// else, get expression
+					del = -1;
+					for (int i=cur; i<parser.getLeft(); ++i)
+						if (parser.getType(i) == TOKEN_DEL
+						 && parser.cmp(i, ",") == 0)
+						{
+							del = i;
+							break;
+						};
+					int end = del;
+					if (end == -1)
+						end = parser.getLeft();
 					int readed;
 					val = parser.getExpression(cur, end, readed);
-					if (readed != end - 1)
+					if (readed != end - cur)
 					{
+						printf("%d %d\n", cur, end);
 						if (readed == 0)
 							readed = 1;
-						parser.printError(parser.getEnd(readed), "Invalid expression");
+						parser.printError(parser.getEnd(cur+readed-1), "Invalid expression");
 						return 5;
 					}
 				}
@@ -546,9 +580,9 @@ int gems_encode(const Parser &parser, vector<BYTE> &code, int pass, int &op)
 					break;
 			}
 			if (del == -1)
-			{
 				return 0;
-			}
+			else
+				cur = del + 1;
 		}
 	}
 	
@@ -716,7 +750,10 @@ int gems_encode(const Parser &parser, vector<BYTE> &code, int pass, int &op)
 		for (int i=0; i<parser.getLeft(); ++i)
 			if (parser.getType(i) == TOKEN_DEL
 			 && parser.cmp(i, ",") == 0)
+			{
 				del = i;
+				break;
+			}
 		int end = del;
 		if (end == -1)
 			end = parser.getLeft();
@@ -739,8 +776,9 @@ int gems_encode(const Parser &parser, vector<BYTE> &code, int pass, int &op)
 			parser.printError(parser.getEnd(del), "Expression expected");
 			return 2;
 		}
+		end = parser.getLeft();
 		int val2 = parser.getExpression(del + 1, end, readed);
-		if (readed != end - 1)
+		if (readed != end - del - 1)
 		{
 			if (readed == 0)
 				readed = 1;
@@ -800,9 +838,91 @@ int gems_encode(const Parser &parser, vector<BYTE> &code, int pass, int &op)
 		parser.printError(parser.getStart(1),"Unexpected error");
 		return 4;
 	}
-	// TODO: if
+	// if
 	if (op == 20)
 	{
+		int cond = -1;
+		int del = -1;
+		for (int i=0; i<parser.getLeft(); ++i)
+			if (parser.getType(i) == TOKEN_EQ)
+				cond = i;
+		for (int i=0; i<parser.getLeft(); ++i)
+			if (parser.getType(i) == TOKEN_DEL
+			 && parser.cmp(i, ",") == 0)
+			{
+				del = i;
+				break;
+			}
+		int end = cond;
+		if (end == -1)
+			end = parser.getLeft();
+		int readed;
+		int val1 = parser.getExpression(1, end, readed);
+		if (readed != end - 1)
+		{
+			if (readed == 0)
+				readed = 1;
+			parser.printError(parser.getEnd(readed), "Invalid expression");
+			return 5;
+		}
+		if (cond == -1)
+		{
+			parser.printError(parser.getEnd(parser.getLeft() - 1), "condition expected");
+			return 2;
+		}
+		// real conditions, but used ELSE {"=","!=",">",">=","<","<="}
+		static char *ifc[] = {"!=","=","<=","<",">=",">"};
+		int ifc_id = -1;
+		for (int i=0; i<sizeof(ifc)/sizeof(ifc); ++i)
+			if (parser.cmp(cond, ifc[i]) == 0)
+				ifc_id = i;
+		if (ifc_id == -1)
+		{
+			parser.printError(parser.getStart(cond), "Unknown condition");
+			return 2;
+		}
+		if (parser.getLeft() == cond + 1)
+		{
+			parser.printError(parser.getEnd(cond), "Expression expected");
+			return 2;
+		}
+		if (del == -1)
+			end = parser.getLeft();
+		else
+			end = del;
+		int val2 = parser.getExpression(cond + 1, end, readed);
+		if (readed != end - cond - 1)
+		{
+			if (readed == 0)
+				readed = 1;
+			parser.printError(parser.getEnd(cond + readed), "Invalid expression");
+			return 5;
+		}
+		if (del == -1)
+		{
+			parser.printError(parser.getEnd(parser.getLeft() - 1), "\",\" expected");
+			return 2;
+		}
+		end = parser.getLeft();
+		int val3 = parser.getExpression(del + 1, end, readed);
+		if (readed != end - del - 1)
+		{
+			if (readed == 0)
+				readed = 1;
+			parser.printError(parser.getEnd(del + readed), "Invalid expression");
+			return 5;
+		}
+		code[1] = val1;
+		code[2] = ifc_id;
+		code[3] = val2;
+		val3 -= parser.origin+5;
+		if (val3 < 0 || val3 > 0xFF)
+		{
+			parser.printError(parser.getStart(del+1), "Invalid value");
+			return 3;
+		}
+		code[4] = val3;
+		return 0;
 	}
 
 	parser.printError(parser.getStart(1),"Unexpected error");
@@ -1531,11 +1651,11 @@ void make_pass2_fixes()
 	for (int i=0; i<sequences_count; ++i)
 		SetWordLE(&section->code[i*2], sequence_offset[i] + sequences_count * 2);
 	
-	// move section HEADER to it's position
+	// move section HEADER to its position
 	section = &sections[1];
 	section->origin = sections[0].code.size();
 	
-	// move section CODE to it's position
+	// move section CODE to its position
 	sections[2].origin = section->origin + section->code.size();
 	
 	for (int i=0; i<3; ++i)
@@ -1559,6 +1679,7 @@ void make_pass2_fixes()
 	for (int i=0; i<pass2_fixes.size(); ++i)
 	{
 		Parser &parser = pass2_fixes[i].parser;
+		parser.origin += sections[pass2_fixes[i].section].origin;
 
 		int err = expand_names(parser, symbols[pass2_fixes[i].sequence], not_found);
 		int ex = not_found.size(); // count of not found symbols
@@ -1590,7 +1711,7 @@ void make_pass2_fixes()
 		section = &sections[pass2_fixes[i].section];
 		
 		// position where rewrite
-		int origin = parser.origin;
+		int origin = parser.origin - sections[pass2_fixes[i].section].origin;
 		
 		// check index overflow
 		if (origin + code.size() > section->code.size())
