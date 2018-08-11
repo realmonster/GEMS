@@ -22,15 +22,18 @@
 #include "common.h"
 #include "instruments.h"
 
+bool ptr3 = true;
+
 void usage()
 {
 	printf(
-"Usage: .exe cfg\n"
+"Usage: .exe cfg [2]\n"
 "\n"
 "      Warning: all outputs will be overwrited automatically.\n"
 "      All outputs will be in directory of \"cfg\" from params.\n"
 "\n"
 "      All configuration parameters placed in config\n"
+"      2 - optional. use 2 bytes ptr in sequences. default is 3.\n"
 "\n"
 "Author: r57shell@uralweb.ru\n");
 	exit(0);
@@ -440,7 +443,7 @@ int gems_encode(const Parser &parser, vector<BYTE> &code, int pass, int &op)
 		if (op == 30)
 			len *= 4;
 		if (op == 31)
-			len *= 3;
+			len *= (ptr3 ? 3 : 2);
 		code.resize(len);
 	}
 	else
@@ -533,7 +536,7 @@ int gems_encode(const Parser &parser, vector<BYTE> &code, int pass, int &op)
 					code[p] = val;
 				}
 				// dc.w
-				if (op == 29)
+				if (op == 29 || (op == 31 && !ptr3)) // and dc.t
 				{
 					if (val < -0x8000 || val > 0xFFFF)
 					{
@@ -559,7 +562,7 @@ int gems_encode(const Parser &parser, vector<BYTE> &code, int pass, int &op)
 						code[p*4+l] = (unsigned char)(val>>(l*8));
 				}
 				// dc.t
-				if (op == 31)
+				if (op == 31 && ptr3)
 				{
 					if (val < -0x800000 || val > 0xFFFFFF)
 					{
@@ -2234,7 +2237,13 @@ void sections_init(map<hashed_vector,int> &symbols)
 
 int main(int argc, char **args)
 {
-	if (argc != 2)
+	if (argc == 3)
+	{
+		if (strcmp(args[2], "2"))
+			usage();
+		ptr3 = false;
+	}
+	else if (argc != 2)
 		usage();
 	
 	map<hashed_vector,int> symbols;
