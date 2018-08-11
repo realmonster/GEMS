@@ -771,7 +771,7 @@ int main(int argc, char **args)
 			int sskip  = GetWordLE(&samples[sh+4]);
 			int sfirst = GetWordLE(&samples[sh+6]);
 			int sloop  = (short)GetWordLE(&samples[sh+8]);
-			int send   = GetWordLE(&samples[sh+10]);
+			int send   = (short)GetWordLE(&samples[sh+10]);
 			int s_all  = sskip + sfirst + send;
 			
 			if (soff+s_all > samples.size())
