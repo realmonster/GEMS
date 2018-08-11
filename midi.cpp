@@ -18,6 +18,7 @@
 #include "midi.h"
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
 
 // get MIDI delta time
 std::vector<unsigned char> gett(int t)

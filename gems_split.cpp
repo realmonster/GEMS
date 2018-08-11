@@ -16,6 +16,7 @@
 */
 
 #include <cstdio>
+#include <cstdlib>
 #include <vector>
 #include <cerrno>
 #include <direct.h>
@@ -120,7 +121,7 @@ int gems_decode(const BYTE *code, char *text)
 		case 0x71:
 		{
 			// real conditions, but used ELSE {"=","!=",">",">=","<","<="}
-			static char *ifc[] = {"!=","=","<=","<",">=",">"};
+			const char *ifc[] = {"!=","=","<=","<",">=",">"};
 			int c = code[2]; 
 			if (c >= 6)
 				c = 0;
@@ -157,7 +158,7 @@ int gems_decode(const BYTE *code, char *text)
 	return 0;
 }
 
-char *readall_errtype[]={"ok","open","read"};
+const char *readall_errtype[] = {"ok","open","read"};
 
 int readall(const char *path, std::vector<BYTE> &result)
 {

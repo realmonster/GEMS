@@ -32,6 +32,7 @@ Author: r57shell@uralweb.ru
 */
 
 #include <cstdio>
+#include <cstring>
 #include <algorithm>
 #include <vector>
 
@@ -421,7 +422,7 @@ void track_end(std::vector<unsigned char> &track, int delta)
 	track.push_back(0);
 }
 
-char *inst_type_name[] = {"FM", "DAC", "PSG", "NOISE"};
+const char *inst_type_name[] = {"FM", "DAC", "PSG", "NOISE"};
 std::vector<int> inst;
 std::vector<int> inst_pan;
 std::vector<int> inst_volume;

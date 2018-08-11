@@ -21,9 +21,9 @@
 #include <cassert>
 #include "instruments.h"
 
-char *inst_type_name[] = {"FM", "DAC", "PSG", "NOISE"};
+const char *inst_type_name[] = {"FM", "DAC", "PSG", "NOISE"};
 
-char *fm_format[] =
+const char *fm_format[] =
 {
 	"??????tt",
 	"????ovvv",
@@ -69,13 +69,13 @@ char *fm_format[] =
 };
 
 
-char *dac_format[] =
+const char *dac_format[] =
 {
 	"??????tt"
 };
 
 
-char *psg_format[] =
+const char *psg_format[] =
 {
 	"??????tt",
 	"?????nnn",
@@ -199,7 +199,7 @@ int main(int argc, char **args)
 			off_e = flen; // end of last instrument = end of file
 
 		unsigned char *ym = instruments_file + off;
-		char **format;
+		const char **format;
 		int format_size = 0;
 		switch(it)
 		{
@@ -314,7 +314,7 @@ int main(int argc, char **args)
 			GemsFM fm;
 			fm.Set(ym);
 			printf("CH: 64 %d %d %d %d 120 0\n",fm.FB,fm.ALG,fm.AMS,fm.FMS);
-			char * opname[]={"M1","C1","M2","C2"};
+			const char * opname[]={"M1","C1","M2","C2"};
 			for (int i=0; i<4; ++i)
 			{
 				printf("%s: %d %d %d %d %d %d %d %d %d %d %d\n",

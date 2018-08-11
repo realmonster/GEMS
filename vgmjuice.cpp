@@ -16,6 +16,7 @@
 */
 
 #include <cstdio>
+#include <cmath>
 #include <direct.h>
 #include "instruments.h"
 #include "vgm_parser.h"
@@ -144,7 +145,7 @@ static int fmtbl[] =
 1288, //C
 };
 
-char *note_name[] = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
+const char *note_name[] = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
 
 int getNote(int freq)
 {

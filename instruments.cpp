@@ -773,7 +773,7 @@ int InstrumentConverter::FormatSize(int format)
 	return format_size[format];
 }
 
-static char *formats[] = {
+static const char *formats[] = {
 	"gems",
 	"tyi",
 	"tfi",

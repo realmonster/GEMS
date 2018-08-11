@@ -103,7 +103,7 @@ struct GemsFM : GemsInstrument
 	bool IsOn(int op) const;
 	
 	// returns true if Volume depends Operator TL.
-	bool GemsFM::IsCarrier(int op) const;
+	bool IsCarrier(int op) const;
 };
 
 struct GemsPSG : GemsInstrument
